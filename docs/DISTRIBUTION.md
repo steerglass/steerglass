@@ -7,6 +7,7 @@ and run Steerglass yourself, see the README.
 | --- | --- | --- |
 | **Direct** (steerglass.com) | `pnpm tauri build` | Main channel: signed builds that update themselves |
 | **Homebrew** | cask in the `homebrew-tap` repository | Updated by `publish-release.mjs` |
+| **GitHub Releases** | the same installers | Created and filled by `publish-release.mjs` (`github-release.mjs`); no updates from there |
 | **Linux repositories** | `.deb`, `.rpm` from CI | Signed apt and dnf repositories on steerglass.com |
 | **Mac App Store** (optional) | `scripts/build-appstore.sh` (`--features appstore`) | Sandboxed, see limitations |
 

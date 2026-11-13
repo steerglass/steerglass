@@ -15,6 +15,7 @@
 // Every published file name is lowercase.
 //   apt/, rpm/               the signed Linux repositories (see linux-repos.mjs)
 //   updates/latest.json      written last, so clients never see a manifest before its files
+// Then the Homebrew cask and the GitHub Release (github-release.mjs) get the new version.
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
@@ -23,6 +24,7 @@ import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildLinuxRepos, uploadLinuxRepos } from "./linux-repos.mjs";
 import { updateHomebrewCask } from "./homebrew-cask.mjs";
+import { githubRelease } from "./github-release.mjs";
 import { remote } from "./remote.mjs";
 
 const SITE = "https://steerglass.com";
@@ -207,4 +209,14 @@ if (dmg) {
     console.error(`Homebrew cask not updated (${e.message.split("\n")[0]}): run it again later with`);
     console.error(`  node scripts/homebrew-cask.mjs ${version}`);
   }
+}
+
+// The GitHub Release gets the installers too (not the updater-only .app.tar.gz). A failure here
+// doesn't undo the release either.
+const installers = readdirSync(releaseDir).filter((f) => /\.(dmg|exe|msi|appimage|deb|rpm)$/.test(f));
+try {
+  githubRelease(version, installers.map((f) => join(releaseDir, f)));
+} catch (e) {
+  console.error(`GitHub Release not updated (${e.message.split("\n")[0]}): run it again later with`);
+  console.error(`  node scripts/github-release.mjs ${version} <installers>`);
 }
