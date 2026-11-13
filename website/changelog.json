@@ -1,5 +1,16 @@
 [
   {
+    "version": "0.3.0",
+    "date": "2026-11-13",
+    "title": "Steerglass is now open source",
+    "items": [
+      "Steerglass is free and open source under the Apache 2.0 license. The code is on GitHub: github.com/steerglass/steerglass.",
+      "Every cluster and every feature, with no account: the 3-cluster limit and sign-in are gone, and the app no longer contacts steerglass.com except to check for updates.",
+      "Help → Send feedback and Report a Bug now open a GitHub issue with your version and system filled in.",
+      "Accounts from the beta are no longer needed and have been deleted. Thank you to everyone who tried Steerglass during the beta!"
+    ]
+  },
+  {
     "version": "0.2.10",
     "date": "2026-11-12",
     "title": "Find a namespace by typing",
