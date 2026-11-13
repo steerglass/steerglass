@@ -24,6 +24,7 @@ const PAGES = [
   { path: "/compare/headlamp/", files: ["compare/headlamp/index.html"], priority: "0.6" },
   { path: "/privacy/", files: ["privacy/index.html"], priority: "0.3" },
   { path: "/security/", files: ["security/index.html"], priority: "0.3" },
+  { path: "/code-signing/", files: ["code-signing/index.html"], priority: "0.3" },
 ];
 
 const args = process.argv.slice(2);
