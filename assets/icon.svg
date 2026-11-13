@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1a2133"/>
+      <stop offset="1" stop-color="#0b0f19"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#4f7cff" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#4f7cff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2dd4bf"/>
+      <stop offset="1" stop-color="#6366f1"/>
+    </linearGradient>
+  </defs>
+  <!-- macOS icon grid: 824px rounded square centred in 1024 -->
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)"/>
+  <rect x="100.5" y="100.5" width="823" height="823" rx="185" fill="none" stroke="#ffffff" stroke-opacity="0.08" stroke-width="2"/>
+  <circle cx="512" cy="512" r="380" fill="url(#glow)"/>
+  <g transform="translate(512 512) scale(9) translate(-32 -32)">
+    <path d="M46 13H26.5a9.5 9.5 0 0 0 0 19h11a9.5 9.5 0 0 1 0 19H18" fill="none" stroke="url(#g)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="47" cy="13" r="6.5" fill="#2dd4bf"/>
+    <circle cx="17" cy="51" r="6.5" fill="#6366f1"/>
+  </g>
+</svg>

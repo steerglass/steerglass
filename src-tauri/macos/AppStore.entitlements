@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Required for every Mac App Store app. -->
+    <key>com.apple.security.app-sandbox</key>
+    <true/>
+    <!-- Talk to Kubernetes API servers. -->
+    <key>com.apple.security.network.client</key>
+    <true/>
+    <!-- Listen on localhost for port-forwarding. -->
+    <key>com.apple.security.network.server</key>
+    <true/>
+    <!-- Kubeconfig files chosen by the user, remembered across launches with security-scoped bookmarks. -->
+    <key>com.apple.security.files.user-selected.read-write</key>
+    <true/>
+    <key>com.apple.security.files.bookmarks.app-scope</key>
+    <true/>
+    <!-- Read ~/.kube directly. Apple reviews temporary exceptions case by case: if it is
+         rejected, remove it and rely on the "Grant access to ~/.kube" flow (bookmarks). -->
+    <key>com.apple.security.temporary-exception.files.home-relative-path.read-only</key>
+    <array>
+        <string>/.kube/</string>
+    </array>
+    <key>com.apple.application-identifier</key>
+    <string>TEAMID.com.steerglass.app</string>
+    <key>com.apple.developer.team-identifier</key>
+    <string>TEAMID</string>
+</dict>
+</plist>

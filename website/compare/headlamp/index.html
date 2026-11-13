@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Steerglass vs Headlamp — Kubernetes desktop UIs compared</title>
+  <meta name="description" content="How Steerglass compares with Headlamp: desktop vs in-cluster, plugins, open source, several clusters at once and performance.">
+  <link rel="canonical" href="https://steerglass.com/compare/headlamp/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Steerglass">
+  <meta property="og:url" content="https://steerglass.com/compare/headlamp/">
+  <meta property="og:title" content="Steerglass vs Headlamp — Kubernetes desktop UIs compared">
+  <meta property="og:description" content="How Steerglass compares with Headlamp: desktop vs in-cluster, plugins, open source, several clusters at once and performance.">
+  <meta property="og:image" content="https://steerglass.com/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Steerglass — every Kubernetes cluster, one fast window">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Steerglass vs Headlamp — Kubernetes desktop UIs compared">
+  <meta name="twitter:description" content="How Steerglass compares with Headlamp: desktop vs in-cluster, plugins, open source, several clusters at once and performance.">
+  <meta name="twitter:image" content="https://steerglass.com/og.png">
+  <link rel="icon" href="/favicon.ico" sizes="48x48">
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#0b0e15">
+  <!-- Analytics: only the campaign parameters (utm_*, ref) leave the page, never the rest of the address. -->
+  <script>function sgAnalyticsUrl(t,p){try{var u=new URL(p.url),k=new URLSearchParams();u.searchParams.forEach(function(v,n){if(/^utm_|^ref$/.test(n))k.set(n,v)});u.search=k.toString();p.url=u.toString()}catch(e){}return p}</script>
+  <script defer src="/u/script.js" data-website-id="b2221c28-03bc-4ac3-8840-a808b5ce874b" data-host-url="https://steerglass.com/u" data-domains="steerglass.com" data-before-send="sgAnalyticsUrl"></script>
+  <link rel="stylesheet" href="/portal.css?v=289445442d">
+  <style>
+    .cmp { max-width: 900px; padding-bottom: 40px; color: var(--text-2); font-size: 15.5px; line-height: 1.7; }
+    .cmp h2 { color: var(--text); font-size: 22px; margin: 44px 0 10px; }
+    .cmp p { margin: 0 0 12px; }
+    .cmp ul { margin: 0 0 12px; padding-left: 20px; }
+    .cmp li + li { margin-top: 6px; }
+    .cmp b { color: var(--text); font-weight: 600; }
+    .cmp .scroll { overflow-x: auto; }
+    .cmp table { width: 100%; border-collapse: collapse; font-size: 14.5px; margin: 8px 0 6px; min-width: 620px; }
+    .cmp th, .cmp td { text-align: left; vertical-align: top; padding: 11px 14px 11px 0; border-top: 1px solid var(--border); white-space: normal; text-transform: none; letter-spacing: 0; font-size: 14.5px; }
+    .cmp thead th { color: var(--text); font-weight: 650; border-top: 0; }
+    .cmp tbody th { color: var(--text); font-weight: 600; width: 26%; }
+    .cmp td.sg { color: var(--text); }
+    .cmp .note { font-size: 13.5px; color: var(--text-3); }
+    .choose { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 8px; }
+    @media (max-width: 760px) { .choose { grid-template-columns: minmax(0, 1fr); } }
+    .choose .card h3 { margin: 0 0 8px; font-size: 17px; color: var(--text); }
+    .choose .card ul { margin: 0; }
+    .cards3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+    @media (max-width: 860px) { .cards3 { grid-template-columns: minmax(0, 1fr); } }
+    .cards3 a.card { color: inherit; }
+    .cards3 a.card:hover { text-decoration: none; border-color: var(--teal); }
+    .cards3 h3 { margin: 0 0 6px; color: var(--text); }
+  </style>
+</head>
+<body>
+  <nav class="site"><div class="wrap">
+    <a class="brand" href="/"><img src="/logo.svg" width="26" height="26" alt=""><span class="brand-name">Steerglass</span></a>
+    <div class="links"><a href="/#features">Features</a><a href="/install/">Download</a><a href="/changelog/">Changelog</a><a href="/#faq">FAQ</a></div>
+    <div class="spacer"></div>
+    <div class="who"><a class="btn small" href="https://github.com/steerglass/steerglass" aria-label="Steerglass on GitHub"><svg class="gh-mark" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>GitHub</a><a class="btn small primary" href="/install/">Download</a></div>
+  </div></nav>
+  <main class="wrap">
+    <header class="page-head">
+      <div class="eyebrow">Compare</div>
+      <h1>Steerglass vs <span class="grad">Headlamp</span></h1>
+      <p class="lead">Headlamp is an open-source, extensible Kubernetes UI that runs as a desktop app or inside a cluster. Steerglass is a native desktop app focused on speed across many clusters.</p>
+    </header>
+    <article class="cmp">
+      <div class="scroll"><table>
+        <thead><tr><th></th><th>Steerglass</th><th>Headlamp</th></tr></thead>
+        <tbody><tr><th>Where it runs</th><td class="sg">Desktop app.</td><td>Desktop app, or in the cluster as a web UI for the whole team.</td></tr><tr><th>Price and license</th><td class="sg">Free and open source (Apache 2.0), every cluster, no account.</td><td>Free and open source (Apache 2.0), a Kubernetes SIG UI project.</td></tr><tr><th>Several clusters</th><td class="sg">Yes: resources of many clusters merged into one live table.</td><td>Yes, multi-cluster support.</td></tr><tr><th>Extensibility</th><td class="sg">No plugins.</td><td>Plugin system, with community plugins.</td></tr><tr><th>Access</th><td class="sg">Uses your kubeconfig credentials, like kubectl.</td><td>Kubeconfig on the desktop; in the cluster, sign-in with a token or OIDC, limited by Kubernetes RBAC.</td></tr><tr><th>App engine</th><td class="sg">Native Rust core with the system web view.</td><td>Electron (desktop app).</td></tr><tr><th>Logs, shell, port-forward, YAML editing</th><td class="sg">Yes</td><td>Yes</td></tr><tr><th>CPU and memory charts</th><td class="sg">Per-pod charts with up to 24 hours of history; current usage per node.</td><td>Yes, with metrics from the cluster.</td></tr><tr><th>Platforms</th><td class="sg">macOS, Windows, Linux</td><td>macOS, Windows, Linux, and any browser when run in the cluster</td></tr></tbody>
+      </table></div>
+      <p class="note">Compared on November 1, 2026, from each project’s own website and documentation. Something out of date or wrong? Write to <a href="mailto:hello@steerglass.com">hello@steerglass.com</a> and we’ll fix it.</p>
+      <h2>Which one fits you</h2>
+      <div class="choose">
+        <div class="card"><h3>Choose Headlamp if…</h3><ul><li>you want a tool you can extend with plugins</li><li>you want a shared web UI running in the cluster for your whole team</li><li>you need it to run in a browser without installing anything</li></ul></div>
+        <div class="card"><h3>Choose Steerglass if…</h3><ul><li>you work with <b>many clusters at once</b> and want them side by side in one live table</li><li>speed matters: big clusters load in about a second and stay live</li><li>you want production clusters clearly marked, with typed confirmation before deleting there</li><li>you prefer a small native app on your own machine</li></ul></div>
+      </div>
+    </article>
+    <section style="padding: 24px 0 90px">
+      <div class="card feature row" style="justify-content:space-between">
+        <div><h3>Try Steerglass on your clusters</h3><p class="muted" style="margin:0">Free and open source, every cluster, no account needed.</p></div>
+        <a class="btn primary" href="/install/">Download</a>
+      </div>
+    </section>
+  </main>
+  <footer class="site"><div class="wrap"><span class="brand" style="font-size:15px"><img src="/logo.svg" width="20" height="20" alt="">Steerglass</span><span>© 2026 Steerglass</span><div class="spacer"></div><a href="/install/">Download</a><a href="https://github.com/steerglass/steerglass">GitHub</a><a href="/compare/">Compare</a><a href="/security/">Security</a><a href="/privacy/">Privacy</a><a href="mailto:hello@steerglass.com">hello@steerglass.com</a></div></footer>
+  <script src="/portal.js?v=11473a3429"></script>
+</body>
+</html>

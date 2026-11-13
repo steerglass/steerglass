@@ -1,0 +1,66 @@
+name: Release (Windows, Linux)
+
+# macOS is built, signed and notarized on a Mac with scripts/release-mac.sh.
+# This workflow builds the other platforms; the bundles are published to steerglass.com from a Mac:
+#   gh run download <run id> -D dist-ci && node scripts/publish-release.mjs --notes "…" dist-ci
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            name: windows-x86_64
+          - platform: ubuntu-22.04
+            name: linux-x86_64
+          - platform: ubuntu-22.04-arm
+            name: linux-aarch64
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Linux dependencies
+        if: startsWith(matrix.platform, 'ubuntu')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: pnpm install --frozen-lockfile
+      - run: cargo test --manifest-path src-tauri/Cargo.toml --lib
+
+      - name: Build
+        run: pnpm tauri build
+        env:
+          # Update signing key (contents of .secrets/updater.key): without it no updater bundles are made.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bundle-${{ matrix.name }}
+          if-no-files-found: error
+          path: |
+            src-tauri/target/release/bundle/nsis/*-setup.exe*
+            src-tauri/target/release/bundle/msi/*.msi*
+            src-tauri/target/release/bundle/appimage/*.AppImage*
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/rpm/*.rpm

@@ -1,0 +1,5 @@
+User-agent: *
+Disallow: /api/
+Disallow: /u/
+
+Sitemap: https://steerglass.com/sitemap.xml

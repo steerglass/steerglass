@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Security · Steerglass</title>
+  <meta name="description" content="How Steerglass downloads and updates are signed and verified, the SHA-256 checksums of every release, and how to report a vulnerability.">
+  <link rel="canonical" href="https://steerglass.com/security/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Steerglass">
+  <meta property="og:url" content="https://steerglass.com/security/">
+  <meta property="og:title" content="Security · Steerglass">
+  <meta property="og:description" content="How Steerglass downloads and updates are signed and verified, the SHA-256 checksums of every release, and how to report a vulnerability.">
+  <meta property="og:image" content="https://steerglass.com/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Steerglass — every Kubernetes cluster, one fast window">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Security · Steerglass">
+  <meta name="twitter:description" content="How Steerglass downloads and updates are signed and verified, the SHA-256 checksums of every release, and how to report a vulnerability.">
+  <meta name="twitter:image" content="https://steerglass.com/og.png">
+  <link rel="icon" href="/favicon.ico" sizes="48x48">
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#0b0e15">
+  <!-- Analytics: only the campaign parameters (utm_*, ref) leave the page, never the rest of the address. -->
+  <script>function sgAnalyticsUrl(t,p){try{var u=new URL(p.url),k=new URLSearchParams();u.searchParams.forEach(function(v,n){if(/^utm_|^ref$/.test(n))k.set(n,v)});u.search=k.toString();p.url=u.toString()}catch(e){}return p}</script>
+  <script defer src="/u/script.js" data-website-id="b2221c28-03bc-4ac3-8840-a808b5ce874b" data-host-url="https://steerglass.com/u" data-domains="steerglass.com" data-before-send="sgAnalyticsUrl"></script>
+  <link rel="stylesheet" href="/portal.css?v=289445442d">
+  <style>
+    .legal { max-width: 760px; padding-bottom: 90px; color: var(--text-2); font-size: 15.5px; line-height: 1.7; }
+    .legal h2 { color: var(--text); font-size: 21px; margin: 44px 0 10px; }
+    .legal h3 { color: var(--text); font-size: 16px; margin: 24px 0 6px; }
+    .legal p { margin: 0 0 12px; }
+    .legal ul { margin: 0 0 12px; padding-left: 20px; }
+    .legal li + li { margin-top: 6px; }
+    .legal b { color: var(--text); font-weight: 600; }
+    .legal .summary { border: 1px solid var(--border); background: var(--bg-2); border-radius: 14px; padding: 18px 22px; margin: 8px 0 8px; }
+    .legal .summary ul { margin: 0; }
+    .legal table { width: 100%; border-collapse: collapse; margin: 8px 0 14px; font-size: 14.5px; }
+    .legal th, .legal td { white-space: normal; text-transform: none; letter-spacing: 0; font-size: 14.5px; text-align: left; vertical-align: top; padding: 9px 12px 9px 0; border-top: 1px solid var(--border); }
+    .legal th { color: var(--text); font-weight: 600; }
+    .legal .scroll { overflow-x: auto; }
+    .legal pre.cmd { margin: 6px 0 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .legal code { font-family: var(--mono); font-size: 13.5px; color: var(--text); }
+  </style>
+</head>
+<body>
+  <nav class="site"><div class="wrap">
+    <a class="brand" href="/"><img src="/logo.svg" width="26" height="26" alt=""><span class="brand-name">Steerglass</span></a>
+    <div class="links"><a href="/#features">Features</a><a href="/install/">Download</a><a href="/changelog/">Changelog</a><a href="/#faq">FAQ</a></div>
+    <div class="spacer"></div>
+    <div class="who"><a class="btn small" href="https://github.com/steerglass/steerglass" aria-label="Steerglass on GitHub"><svg class="gh-mark" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>GitHub</a><a class="btn small primary" href="/install/">Download</a></div>
+  </div></nav>
+  <main class="wrap">
+    <header class="page-head">
+      <div class="eyebrow">Trust</div>
+      <h1>Security</h1>
+      <p class="lead">How to check that the Steerglass you run is the one we built, and how to tell us about a problem. Last updated November 2, 2026.</p>
+    </header>
+
+    <article class="legal">
+      <div class="summary">
+        <p><b>The short version</b></p>
+        <ul>
+          <li>Steerglass connects <b>directly</b> from your computer to your clusters. Your kubeconfig, credentials and cluster data never reach us, and the app has no telemetry.</li>
+          <li>Every <b>update is signed</b>, and the app refuses to install one whose signature doesn’t match the key built into it. The signing key is <b>not on the web server</b>: whoever controlled steerglass.com still couldn’t push an update.</li>
+          <li>The macOS app is <b>signed and notarized by Apple</b>; Linux packages and repositories are <b>signed with our GPG key</b>; every release has <b>SHA-256 checksums</b>.</li>
+          <li>Found a vulnerability? Write to <a href="mailto:hello@steerglass.com?subject=Security">hello@steerglass.com</a>.</li>
+        </ul>
+      </div>
+
+      <h2>Downloads</h2>
+      <div class="scroll"><table>
+        <tr><th>System</th><th>How it’s signed</th></tr>
+        <tr><td>macOS</td><td>Signed with our Apple Developer ID (<code>Davide Bettio (79AHY83MQ9)</code>) and notarized by Apple, so Gatekeeper opens it without warnings. The Homebrew cask pins the SHA-256 of each release.</td></tr>
+        <tr><td>Linux</td><td>The <code>.deb</code> and <code>.rpm</code> packages and the apt and dnf repository indexes are signed with the Steerglass repository key: <code>BF36 B823 7521 CA83 88E0 02C7 91F9 627C E6D9 1421</code> (<a href="/keys/steerglass.asc">steerglass.asc</a>).</td></tr>
+        <tr><td>Windows</td><td>The installers are <b>not code-signed yet</b> — we’re working on it — so SmartScreen may show a warning the first time. Check the SHA-256 below before running them.</td></tr>
+      </table></div>
+
+      <h2>Checksums</h2>
+      <p>Every release has a <code>sha256sums.txt</code> next to its files, for example <a href="/releases/0.2.4/sha256sums.txt">releases/0.2.4/sha256sums.txt</a>. The <a href="/install/#verify">install page</a> lists the checksums of the current downloads. To check a file:</p>
+      <pre class="cmd">macOS:    shasum -a 256 steerglass-mac.dmg
+Linux:    sha256sum steerglass-linux-x86_64.appimage
+Windows:  Get-FileHash .\steerglass-windows-setup.exe   (PowerShell)</pre>
+
+      <h2>Updates</h2>
+      <p>The app checks <code>https://steerglass.com/updates/latest.json</code> every few hours. Each update file comes with an Ed25519 (minisign) signature, and the app verifies it against the public key built into it — key ID <code>FABA82CF882C9B78</code> — before installing. An update that doesn’t verify is discarded.</p>
+      <p>The private key that signs updates lives only where releases are built — our build machine and the encrypted secrets of our CI — never on the server that hosts the downloads. Copies installed from our apt or dnf repository update through your package manager, which checks our GPG signature.</p>
+
+      <h2>What the app connects to</h2>
+      <ul>
+        <li><b>Your clusters</b>, directly, with the credentials in your kubeconfig.</li>
+        <li><b>steerglass.com</b>, to check for and download updates. Nothing about your clusters is sent.</li>
+      </ul>
+      <p>The details are in the <a href="/privacy/">privacy policy</a>.</p>
+
+      <h2>Reporting a vulnerability</h2>
+      <p>If you find a security problem in the Steerglass app, steerglass.com or the update and download infrastructure, write to <a href="mailto:hello@steerglass.com?subject=Security">hello@steerglass.com</a> with “Security” in the subject. Include what you found, how to reproduce it and what an attacker could do with it.</p>
+      <ul>
+        <li>We’ll reply within <b>3 working days</b> and keep you posted until it’s fixed.</li>
+        <li>Please give us <b>90 days</b>, or until a fix is released if that’s sooner, before disclosing it publicly. We’re happy to credit you in the changelog.</li>
+        <li>Research in good faith is welcome and we won’t take action against it. Please don’t access other people’s data, don’t degrade the service (no load or denial-of-service testing) and don’t use social engineering.</li>
+        <li>There’s no paid bug bounty at the moment.</li>
+      </ul>
+      <p>The same contact is published in <a href="/.well-known/security.txt">/.well-known/security.txt</a>.</p>
+    </article>
+  </main>
+  <footer class="site"><div class="wrap"><span class="brand" style="font-size:15px"><img src="/logo.svg" width="20" height="20" alt="">Steerglass</span><span>© 2026 Steerglass</span><div class="spacer"></div><a href="/install/">Download</a><a href="https://github.com/steerglass/steerglass">GitHub</a><a href="/compare/">Compare</a><a href="/security/">Security</a><a href="/privacy/">Privacy</a><a href="mailto:hello@steerglass.com">hello@steerglass.com</a></div></footer>
+  <script src="/portal.js?v=11473a3429"></script>
+</body>
+</html>

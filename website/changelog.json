@@ -1,0 +1,145 @@
+[
+  {
+    "version": "0.2.10",
+    "date": "2026-11-12",
+    "title": "Find a namespace by typing",
+    "items": [
+      "The namespace picker at the top right has a search field: type part of a name to filter the list (billing finds billing-api and billing-worker), then pick with ↑ ↓ and ↵, or close with Esc.",
+      "Press N on any resource list to open the picker from the keyboard.",
+      "The namespaces you picked last are listed first, under Recent, and are remembered after you quit."
+    ]
+  },
+  {
+    "version": "0.2.9",
+    "date": "2026-11-09",
+    "title": "Resource quotas you can read at a glance",
+    "items": [
+      "Resource Quotas and Limit Ranges are now in the sidebar, under Config (or ⌘K → quota / limits).",
+      "Each quota shows its fullest resource as a bar, across all your clusters: yellow from 80%, red when it is full and new pods are refused. Nearly full quotas show up in status:bad, next to failing pods.",
+      "A quota's details show a bar per resource (pods, CPU, memory, services…) with used and hard values; a limit range's details list min, max and default request and limit per resource.",
+      "New namespaces show up without reloading: the list is read again every 30 seconds and whenever you open the namespace picker or the command palette."
+    ]
+  },
+  {
+    "version": "0.2.8",
+    "date": "2026-11-05",
+    "title": "A second look before changing production",
+    "items": [
+      "Production clusters ask before every change: saving YAML, applying, scaling, restarting, cordoning, suspending a CronJob, or starting a debug container or node shell. The dialog shows the cluster in red. Turn it off in Settings → Environments; deleting still asks you to type the name.",
+      "Editing YAML: when a save changes fields under status, which Kubernetes ignores, Steerglass says so and points to the spec field to edit instead — for example spec.replicas to scale.",
+      "Logs: Follow is now a switch you can turn off and on, and it no longer stops by itself while new lines stream in. Scrolling up still pauses it.",
+      "Linux and Windows: keyboard shortcuts read Ctrl+S, Ctrl+K and so on, instead of CtrlS."
+    ]
+  },
+  {
+    "version": "0.2.7",
+    "date": "2026-11-05",
+    "title": "No more console windows on Windows",
+    "items": [
+      "Windows: Google (GKE) clusters and other credential plugins that start further programs, such as gcloud, no longer open console windows or Windows Terminal tabs — not when clusters first connect, not when you open the Overview, not on token refresh."
+    ]
+  },
+  {
+    "version": "0.2.6",
+    "date": "2026-11-04",
+    "title": "Debug containers and node shells",
+    "items": [
+      "Debug containers: when a container has no shell (distroless, scratch), start a temporary debug container in the pod with the image you choose — busybox, netshoot, alpine, ubuntu or any other — sharing the container's processes, like kubectl debug.",
+      "Node shells: open a root shell on a node from its Shell tab. Steerglass starts a privileged pod there and removes it when the session closes.",
+      "While a debug image downloads, the terminal shows each stage and the time elapsed.",
+      "Annotations in JSON open formatted and highlighted, long ones are no longer cut off, and every value can be copied or opened full screen.",
+      "Windows: clusters that sign in with a credential plugin (kubelogin, aws, gcloud) no longer flash a console window on every connection."
+    ]
+  },
+  {
+    "version": "0.2.5",
+    "date": "2026-11-03",
+    "title": "Sign in without a desktop browser",
+    "items": [
+      "Signing in now shows the confirmation link, clickable and with a copy button, so you can finish in any browser when Steerglass can't open one — on WSL, over SSH or on a minimal Linux desktop."
+    ]
+  },
+  {
+    "version": "0.2.4",
+    "date": "2026-11-02",
+    "title": "ConfigMaps you can read",
+    "items": [
+      "ConfigMap values are shown according to what they hold: JSON formatted, YAML, TOML, INI, shell, XML and nginx files highlighted, .env and .properties files as a table.",
+      "Certificates in a ConfigMap are decoded: subject, issuer, alternative names and how long until they expire.",
+      "Binary data is listed with its type and size, and every value can be copied or opened full screen.",
+      "Used by: ConfigMaps and Secrets list the workloads that mount them or read them into their environment."
+    ]
+  },
+  {
+    "version": "0.2.3",
+    "date": "2026-11-01",
+    "title": "No account needed, and a direct line to us",
+    "items": [
+      "Steerglass now works without an account for up to 3 clusters, with every feature.",
+      "Sign in with your steerglass.com account to unlock every cluster — free during the open beta.",
+      "Support & feedback: send questions, bug reports and ideas from your account area (Help → Send feedback in the app) and get answers by email.",
+      "macOS: a Help menu with Send Feedback and Report a Bug.",
+      "macOS: install with Homebrew (brew install --cask davidebettio/tap/steerglass). Every install option is now on one page, steerglass.com/install."
+    ]
+  },
+  {
+    "version": "0.2.2",
+    "date": "2026-11-01",
+    "title": "Port-forwards you can see",
+    "items": [
+      "A forwarded port now shows its local address right on the pod or service, with buttons to open it in the browser, copy it and stop it.",
+      "Clicking a port that's already forwarded no longer starts a second forward.",
+      "Copies installed from a .deb or .rpm now update themselves with the right package.",
+      "Linux: apt and dnf repositories (steerglass.com/install, Linux tab)."
+    ]
+  },
+  {
+    "version": "0.2.1",
+    "date": "2026-11-01",
+    "title": "Light theme and what's new",
+    "items": [
+      "Settings → Appearance: choose an automatic, light or dark theme. The editor and the terminal follow it.",
+      "\"What's new\" shows the changes of each version after an update, and anytime from Settings."
+    ]
+  },
+  {
+    "version": "0.2.0",
+    "date": "2026-11-01",
+    "title": "Open beta",
+    "items": [
+      "Sign in with your steerglass.com account: free during the open beta, every feature and unlimited clusters.",
+      "Sign-in happens in your browser — no key to copy. The license renews by itself and works offline for weeks.",
+      "Settings → Account shows who is signed in and lets you sign this computer out."
+    ]
+  },
+  {
+    "version": "0.1.2",
+    "date": "2026-10-31",
+    "title": "Resource charts and a new look",
+    "items": [
+      "CPU and memory: usage columns for pods, node capacity with the busiest pods, and history charts in the pod's Resources tab.",
+      "Cluster environments (production, staging, development, local) with a colored strip and tags.",
+      "Overview: redesigned cluster cards and a \"Needs attention\" list of failing pods, NotReady nodes and failed jobs.",
+      "Health filters, status pills, readiness bars and the time of the last restart.",
+      "Settings reorganized; a proper About Steerglass window.",
+      "Fixed: the pod shell closed as soon as it opened."
+    ]
+  },
+  {
+    "version": "0.1.1",
+    "date": "2026-10-31",
+    "title": "Faster, lighter lists",
+    "items": [
+      "Built-in resources download only the columns shown, compressed: up to 15× less data on large clusters.",
+      "Smoother tables: faster sorting, fewer redraws, lighter log search."
+    ]
+  },
+  {
+    "version": "0.1.0",
+    "date": "2026-10-31",
+    "title": "First release",
+    "items": [
+      "Steerglass for macOS, Windows and Linux: every cluster in one fast, keyboard-first window."
+    ]
+  }
+]

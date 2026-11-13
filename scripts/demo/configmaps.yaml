@@ -1,0 +1,83 @@
+# ConfigMaps with the kinds of values the detail panel recognises (JSON, YAML, nginx, .env, a
+# certificate, binary data) and a workload that uses them, for "Used by".
+apiVersion: v1
+kind: ConfigMap
+metadata: { name: storefront-config, namespace: shop }
+data:
+  LOG_LEVEL: info
+  FEATURE_FLAGS: "checkout-v2,new-search"
+  app.json: '{"name":"storefront","currency":"EUR","locales":["en","it","de"],"payments":{"provider":"stripe","retries":3,"timeoutMs":2500},"search":{"engine":"meilisearch","url":"http://search.shop:7700","boost":{"title":3,"tags":1.5}},"cache":{"ttlSeconds":300,"redis":"redis://redis.shop:6379/0"}}'
+  application.yaml: |
+    server:
+      port: 8080
+      shutdown: graceful
+    spring:
+      datasource:
+        url: jdbc:postgresql://db.shop:5432/storefront
+        hikari:
+          maximum-pool-size: 20
+    management:
+      endpoints:
+        web:
+          exposure:
+            include: health,info,prometheus
+  defaults.env: |
+    # Shared defaults for the storefront containers
+    TZ=Europe/Rome
+    CART_TTL_HOURS=48
+    export CDN_URL="https://cdn.example.com/shop"
+    MAX_UPLOAD_MB=10
+  nginx.conf: |
+    events { worker_connections 1024; }
+    http {
+      upstream api { server checkout-api.shop:8080; }
+      server {
+        listen 80;
+        gzip on;
+        location /api/ { proxy_pass http://api; proxy_read_timeout 30s; }
+        location / { root /usr/share/nginx/html; try_files $uri /index.html; }
+      }
+    }
+binaryData:
+  favicon.png: iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4DwAAAQEABRjYTgAAAABJRU5ErkJggg==
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: { name: partner-ca, namespace: shop }
+data:
+  ca.crt: |
+    -----BEGIN CERTIFICATE-----
+    MIIB0jCCAXigAwIBAgIUNp6MHyIQ8bHvQ+NJKuO+C3e37iQwCgYIKoZIzj0EAwIw
+    NTEYMBYGA1UECgwPU3RlZXJnbGFzcyBUZXN0MRkwFwYDVQQDDBBkZW1vLmV4YW1w
+    bGUuY29tMB4XDTI2MTEwMTIzNTU0MFoXDTI3MTEwMTIzNTU0MFowNTEYMBYGA1UE
+    CgwPU3RlZXJnbGFzcyBUZXN0MRkwFwYDVQQDDBBkZW1vLmV4YW1wbGUuY29tMFkw
+    EwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEOMZcO28n1iD7dihlNW8f6suWO08KeVUR
+    iavRkoayZytU8C8wQHrQhq8MXMNc+u2xuzXY10g1Rxp5nEiWdRxrnKNmMGQwHQYD
+    VR0OBBYEFIClUQkIqSGDYbs4Rt7L5wF3E5RsMDUGA1UdEQQuMCyCEGRlbW8uZXhh
+    bXBsZS5jb22CEiouZGVtby5leGFtcGxlLmNvbYcECgAAATAMBgNVHRMBAf8EAjAA
+    MAoGCCqGSM49BAMCA0gAMEUCIQCT9XnSudGPY7Hn39RdLvQSHpEn51co9tyNbJxk
+    EhIqkgIgeY9WwjaOrOvB+CVykxGawoYRZxydbDXTcArFSmMPUOE=
+    -----END CERTIFICATE-----
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: storefront-edge, namespace: shop, labels: { app: storefront-edge } }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: storefront-edge } }
+  template:
+    metadata: { labels: { app: storefront-edge } }
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          env:
+            - name: LOG_LEVEL
+              valueFrom: { configMapKeyRef: { name: storefront-config, key: LOG_LEVEL } }
+          volumeMounts:
+            - { name: config, mountPath: /etc/nginx/nginx.conf, subPath: nginx.conf }
+            - { name: partner-ca, mountPath: /etc/ssl/partner }
+          resources: { requests: { cpu: 20m, memory: 16Mi }, limits: { cpu: 100m, memory: 64Mi } }
+      volumes:
+        - { name: config, configMap: { name: storefront-config } }
+        - { name: partner-ca, configMap: { name: partner-ca } }

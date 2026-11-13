@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Steerglass — every Kubernetes cluster, one fast window</title>
+  <meta name="description" content="Steerglass is a fast, keyboard-first desktop app to browse, debug and operate all your Kubernetes clusters at once. Free and open source." />
+  <link rel="canonical" href="https://steerglass.com/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Steerglass">
+  <meta property="og:url" content="https://steerglass.com/">
+  <meta property="og:title" content="Steerglass — every Kubernetes cluster, one fast window">
+  <meta property="og:description" content="A native, keyboard-first Kubernetes client for teams running many clusters. Free and open source.">
+  <meta property="og:image" content="https://steerglass.com/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Steerglass — every Kubernetes cluster, one fast window">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Steerglass — every Kubernetes cluster, one fast window">
+  <meta name="twitter:description" content="A native, keyboard-first Kubernetes client for teams running many clusters. Free and open source.">
+  <meta name="twitter:image" content="https://steerglass.com/og.png">
+  <link rel="icon" href="/favicon.ico" sizes="48x48">
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#0b0e15">
+  <script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://steerglass.com/#org",
+        "name": "Steerglass",
+        "url": "https://steerglass.com/",
+        "logo": "https://steerglass.com/icon-512.png",
+        "email": "hello@steerglass.com",
+        "founder": {
+          "@type": "Person",
+          "name": "Davide Bettio"
+        }
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://steerglass.com/#website",
+        "url": "https://steerglass.com/",
+        "name": "Steerglass",
+        "publisher": {
+          "@id": "https://steerglass.com/#org"
+        }
+      },
+      {
+        "@type": "SoftwareApplication",
+        "name": "Steerglass",
+        "url": "https://steerglass.com/",
+        "applicationCategory": "DeveloperApplication",
+        "applicationSubCategory": "Kubernetes client",
+        "operatingSystem": "macOS 11+, Windows 10+, Linux",
+        "softwareVersion": "0.2.10",
+        "description": "A fast, native, keyboard-first desktop app to browse, debug and operate many Kubernetes clusters at once: live resource tables, logs, shell, port-forward, YAML editing and resource charts.",
+        "image": "https://steerglass.com/og.png",
+        "screenshot": "https://steerglass.com/og.png",
+        "downloadUrl": "https://steerglass.com/#download",
+        "releaseNotes": "https://steerglass.com/changelog/",
+        "license": "https://www.apache.org/licenses/LICENSE-2.0",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "EUR",
+          "description": "Free and open source (Apache 2.0): every feature and every cluster, no account"
+        },
+        "publisher": {
+          "@id": "https://steerglass.com/#org"
+        }
+      },
+      {
+        "@type": "VideoObject",
+        "name": "Steerglass in one minute",
+        "description": "A one-minute demo of Steerglass, recorded in the real app on five local test clusters: the clusters overview, pods from five clusters in one live table, filtering, logs, CPU and memory charts, a shell, a debug container for a container without one, a shell on a node, a certificate in a ConfigMap, the confirmation before changing production, and port-forwarding.",
+        "thumbnailUrl": "https://steerglass.com/media/steerglass-demo-2.jpg",
+        "uploadDate": "2026-11-09",
+        "duration": "PT1M11S",
+        "contentUrl": "https://steerglass.com/media/steerglass-demo-2.mp4",
+        "embedUrl": "https://steerglass.com/#demo",
+        "publisher": {
+          "@id": "https://steerglass.com/#org"
+        }
+      }
+    ]
+  }
+  </script>
+  <!-- Analytics: only the campaign parameters (utm_*, ref) leave the page, never the rest of the address. -->
+  <script>function sgAnalyticsUrl(t,p){try{var u=new URL(p.url),k=new URLSearchParams();u.searchParams.forEach(function(v,n){if(/^utm_|^ref$/.test(n))k.set(n,v)});u.search=k.toString();p.url=u.toString()}catch(e){}return p}</script>
+  <script defer src="/u/script.js" data-website-id="b2221c28-03bc-4ac3-8840-a808b5ce874b" data-host-url="https://steerglass.com/u" data-domains="steerglass.com" data-before-send="sgAnalyticsUrl"></script>
+  <style>
+    :root {
+      --bg: #0b0e15;
+      --bg-2: #11151f;
+      --bg-3: #171c28;
+      --border: #232a39;
+      --text: #e8ebf2;
+      --text-2: #a4abbb;
+      --text-3: #6d7486;
+      --teal: #2dd4bf;
+      --indigo: #6366f1;
+      --accent: #5b8cff;
+      --ok: #3fb950;
+      --warn: #d29922;
+      --error: #f85149;
+      --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+      color-scheme: dark;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; text-decoration: none; }
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+    .grad { background: linear-gradient(120deg, var(--teal), var(--indigo)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+    /* nav */
+    nav { position: sticky; top: 0; z-index: 10; backdrop-filter: blur(12px); background: color-mix(in srgb, var(--bg) 80%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
+    nav .wrap { display: flex; align-items: center; height: 60px; gap: 28px; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; letter-spacing: -0.01em; }
+    nav .links { display: flex; gap: 24px; color: var(--text-2); font-size: 14px; }
+    nav .links a:hover { color: var(--text); }
+    nav .spacer { flex: 1; }
+    .nav-gh { margin-right: 8px; }
+    .gh-mark { width: 16px; height: 16px; fill: currentColor; flex: none; }
+    @media (max-width: 600px) { nav .wrap { gap: 12px; padding: 0 16px; } nav .btn.small { padding: 0 12px; font-size: 13.5px; } .nav-gh { margin-right: 0; } }
+    @media (max-width: 400px) { nav .brand-name { display: none; } }
+    .btn { display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 20px; border-radius: 10px; font-weight: 600; font-size: 15px; border: 1px solid var(--border); background: var(--bg-3); transition: transform .1s, background .15s, border-color .15s; white-space: nowrap; }
+    .btn:hover { border-color: #3a445a; }
+    .btn:active { transform: translateY(1px); }
+    .btn.primary { background: linear-gradient(120deg, #22b8a6, #5b5ff0); border-color: transparent; color: #fff; box-shadow: 0 8px 30px -10px rgba(91, 95, 240, .6); }
+    .btn.primary:hover { filter: brightness(1.08); }
+    .btn.small { height: 34px; padding: 0 14px; font-size: 14px; }
+
+    /* hero */
+    .hero { text-align: center; padding: 88px 0 40px; position: relative; }
+    .hero::before { content: ""; position: absolute; inset: -120px 0 auto; height: 520px; background: radial-gradient(600px 300px at 50% 30%, rgba(99, 102, 241, .22), transparent 70%), radial-gradient(500px 260px at 35% 10%, rgba(45, 212, 191, .14), transparent 70%); pointer-events: none; z-index: -1; }
+    .pill { display: inline-flex; gap: 8px; align-items: center; font-size: 13px; color: var(--text-2); border: 1px solid var(--border); border-radius: 999px; padding: 4px 12px; background: var(--bg-2); }
+    .pill b { color: var(--teal); font-weight: 600; }
+    h1 { font-size: clamp(38px, 6vw, 64px); line-height: 1.05; letter-spacing: -0.035em; margin: 22px auto 18px; max-width: 860px; }
+    .lead { font-size: clamp(17px, 2vw, 20px); color: var(--text-2); max-width: 640px; margin: 0 auto 32px; }
+    @media (max-width: 600px) { .hero { padding-top: 56px; } h1 br { display: none; } }
+    .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .fine { margin-top: 16px; font-size: 13px; color: var(--text-3); }
+
+    /* app mockup: mirrors the app's look (environment strip and tags, health chips, pills, usage bars) */
+    .shot { margin: 56px auto 0; max-width: 1080px; border-radius: 14px; border: 1px solid var(--border); background: #0b0e15; box-shadow: 0 40px 120px -40px rgba(0, 0, 0, .9), 0 0 0 1px rgba(255, 255, 255, .02) inset; overflow: hidden; text-align: left; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+    .win { display: grid; grid-template-columns: 210px 1fr; min-height: 450px; }
+    .side { background: #0f131c; border-right: 1px solid #1f2533; padding: 12px 8px; }
+    .lights { display: flex; gap: 7px; padding: 4px 6px 14px; align-items: center; }
+    .lights i { width: 11px; height: 11px; border-radius: 50%; display: block; }
+    .lights span { margin-left: 12px; display: flex; gap: 7px; align-items: center; font-weight: 650; font-size: 13px; }
+    .sec { font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: var(--text-3); padding: 10px 8px 4px; }
+    .ci { display: flex; align-items: center; gap: 7px; padding: 4px 8px; border-radius: 6px; color: var(--text-2); }
+    .ci.on { background: #18202e; color: var(--text); }
+    .ci.nav { background: rgba(45, 212, 191, .12); color: #5eead4; font-weight: 600; }
+    .et { margin-left: auto; font-size: 9px; font-weight: 650; letter-spacing: .05em; padding: 2px 5px; border-radius: 4px; color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); }
+    .et.p { --c: #ff7b72; } .et.s { --c: #e3b341; } .et.v { --c: #2dd4bf; }
+    .d { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex-shrink: 0; }
+    .d.w { background: #e3b341; } .d.e { background: #ff7b72; } .d.n { background: #8a92a6; }
+    .main { min-width: 0; overflow: hidden; display: flex; flex-direction: column; }
+    .strip { height: 3px; background: #ff7b72; }
+    .mbody { padding: 14px 16px; }
+    .bar { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .bar h4 { margin: 0; font-size: 15px; }
+    .cnt { background: #151a25; color: var(--text-3); border-radius: 10px; padding: 0 8px; font-size: 11px; }
+    .chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #1f2533; background: #151a25; border-radius: 10px; padding: 1px 8px; font-size: 11px; color: var(--text-2); }
+    .chip .et { margin: 0; }
+    .bar .fl { margin-left: auto; border: 1px solid #1f2533; border-radius: 6px; padding: 3px 10px; color: var(--text-3); width: 180px; }
+    .hc { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+    .hc span { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #1f2533; border-radius: 999px; padding: 2px 10px; font-size: 11.5px; color: var(--text-2); }
+    .hc span.on { border-color: #2dd4bf; background: #151a25; color: var(--text); }
+    .hc b { font-weight: 400; color: var(--text-3); }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: 10px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-3); font-weight: 500; padding: 6px 8px; border-bottom: 1px solid #1f2533; }
+    td { padding: 6px 8px; border-bottom: 1px solid #151a25; color: var(--text-2); white-space: nowrap; }
+    td:first-child { color: var(--text); }
+    td .d { display: inline-block; margin-right: 8px; }
+    tr.sel td { background: rgba(45, 212, 191, .08); }
+    tr.sel td:first-child { box-shadow: inset 2px 0 0 #2dd4bf; }
+    .pl { display: inline-flex; align-items: center; gap: 6px; padding: 1px 8px; border-radius: 5px; font-size: 11.5px; font-weight: 500; color: var(--c); background: color-mix(in srgb, var(--c) 13%, transparent); }
+    .pl::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--c); }
+    .pl.ok { --c: #3fb950; } .pl.w { --c: #e3b341; } .pl.e { --c: #ff7b72; } .pl.n { --c: #8a92a6; }
+    .rb { display: inline-flex; align-items: center; gap: 7px; }
+    .rb i, .ub i { display: inline-block; width: 30px; height: 4px; border-radius: 2px; background: #1a2030; overflow: hidden; }
+    .rb i::after, .ub i::after { content: ""; display: block; height: 100%; width: var(--f); background: var(--c, #3fb950); border-radius: 2px; }
+    .ub { display: inline-flex; align-items: center; gap: 7px; }
+    .ub i { width: 46px; height: 5px; }
+    .ub i::after { background: #0d9488; }
+    .hot { color: #e3b341 !important; font-weight: 600; }
+    @media (max-width: 760px) { .win { grid-template-columns: minmax(0, 1fr); } .side { display: none; } .hide-m { display: none; } .bar .chip { display: none; } }
+
+    /* hero speed figures */
+    .quick { display: flex; gap: 10px 22px; justify-content: center; flex-wrap: wrap; margin-top: 22px; color: var(--text-2); font-size: 14px; }
+    .quick span { display: inline-flex; align-items: center; gap: 8px; }
+    .quick b { color: var(--text); font-variant-numeric: tabular-nums; }
+    .quick i { width: 6px; height: 6px; border-radius: 50%; background: var(--teal); }
+
+    /* speed section */
+    .speed { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    @media (max-width: 900px) { .speed { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 520px) { .speed { grid-template-columns: 1fr; } }
+    .metric { background: var(--bg-2); border: 1px solid var(--border); border-radius: 14px; padding: 22px; }
+    .metric b { display: block; font-size: 38px; letter-spacing: -0.03em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+    .metric b small { font-size: 18px; color: var(--text-2); font-weight: 600; letter-spacing: 0; }
+    .metric h3 { margin: 10px 0 6px; font-size: 16px; }
+    .metric p { margin: 0; color: var(--text-2); font-size: 14.5px; }
+    .bytes { margin-top: 28px; background: var(--bg-2); border: 1px solid var(--border); border-radius: 14px; padding: 22px 24px; }
+    .bytes h3 { margin: 0 0 16px; font-size: 16px; }
+    .brow { display: grid; grid-template-columns: 200px minmax(0, 1fr) 90px; gap: 14px; align-items: center; margin-bottom: 12px; font-size: 14.5px; }
+    .brow .tr { height: 12px; border-radius: 6px; background: var(--bg-3); overflow: hidden; }
+    .brow .tr span { display: block; height: 100%; border-radius: 6px; }
+    .brow .v { text-align: right; font-variant-numeric: tabular-nums; color: var(--text); }
+    .brow.them .tr span { background: #6c7385; width: 100%; }
+    .brow.us .tr span { background: var(--teal); width: 6.7%; min-width: 8px; }
+    .bytes .note { margin: 8px 0 0; color: var(--text-3); font-size: 13px; }
+    @media (max-width: 600px) { .brow { grid-template-columns: 1fr 70px; } .brow .tr { grid-column: 1 / -1; grid-row: 2; } }
+
+    /* resources mockup */
+    .rpanel { background: #0f131c; border: 1px solid var(--border); border-radius: 14px; padding: 18px 18px 14px; box-shadow: 0 30px 80px -40px rgba(0, 0, 0, .9); font-size: 12.5px; }
+    .rtabs { display: flex; gap: 16px; border-bottom: 1px solid #1f2533; margin-bottom: 14px; color: var(--text-2); }
+    .rtabs span { padding-bottom: 8px; }
+    .rtabs .on { color: var(--text); box-shadow: inset 0 -2px 0 var(--teal); font-weight: 600; }
+    .rhead { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+    .rhead b { font-size: 22px; letter-spacing: -0.01em; }
+    .rhead .peak { margin-left: auto; color: var(--text-3); }
+    .rpanel svg { width: 100%; height: auto; display: block; }
+    .rpanel text { fill: #8a92a6; font: 10.5px Inter, sans-serif; }
+    .rtip { fill: #1a2030; stroke: #2a3243; }
+    .rcont { display: grid; grid-template-columns: 90px 1fr 1fr; gap: 14px; align-items: center; margin-top: 10px; color: var(--text-2); }
+    .rcont i { display: block; height: 5px; border-radius: 3px; background: #1a2030; overflow: hidden; }
+    .rcont i::after { content: ""; display: block; height: 100%; width: var(--f); background: #0d9488; }
+    .checks { list-style: none; padding: 0; margin: 22px 0 0; display: flex; flex-direction: column; gap: 10px; color: var(--text-2); }
+    .checks li::before { content: "✓"; color: var(--teal); font-weight: 700; margin-right: 10px; }
+
+    /* sections */
+    section { padding: 96px 0; }
+
+    /* demo video: served from steerglass.com, no third-party player */
+    #demo { padding: 72px 0 24px; }
+    .video { position: relative; max-width: 1040px; margin: 0 auto; border-radius: 16px; overflow: hidden; border: 1px solid var(--border); background: #000; box-shadow: 0 30px 80px -30px rgba(0, 0, 0, .8); aspect-ratio: 16 / 9; }
+    .video video { display: block; width: 100%; height: 100%; }
+    .video .play { position: absolute; inset: 0; display: grid; place-items: center; border: 0; padding: 0; cursor: pointer; background: linear-gradient(180deg, rgba(11, 14, 21, .05), rgba(11, 14, 21, .45)); color: #fff; font: inherit; }
+    .video .play span { display: inline-flex; align-items: center; gap: 12px; padding: 14px 24px 14px 18px; border-radius: 999px; font-weight: 650; font-size: 17px; background: linear-gradient(120deg, #22b8a6, #5b5ff0); box-shadow: 0 12px 40px -10px rgba(91, 95, 240, .7); transition: transform .15s; }
+    .video .play:hover span { transform: scale(1.04); }
+    .video .play svg { width: 22px; height: 22px; fill: currentColor; }
+    .video .play { display: none; }
+    .video.ready .play { display: grid; }
+    .video.playing .play { display: none; }
+    .watch { display: inline-flex; align-items: center; gap: 8px; color: var(--text-2); font-weight: 600; font-size: 15px; }
+    .watch:hover { color: var(--text); }
+    .watch svg { width: 16px; height: 16px; fill: currentColor; }
+    .eyebrow { color: var(--teal); font-weight: 600; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; }
+    h2 { font-size: clamp(30px, 4vw, 42px); letter-spacing: -0.03em; line-height: 1.1; margin: 10px 0 14px; }
+    .sub { color: var(--text-2); max-width: 620px; margin: 0 0 44px; font-size: 18px; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } nav .links { display: none; } }
+    .card { background: var(--bg-2); border: 1px solid var(--border); border-radius: 14px; padding: 24px; }
+    .card h3 { margin: 14px 0 6px; font-size: 17px; letter-spacing: -0.01em; }
+    .card p { margin: 0; color: var(--text-2); font-size: 15px; }
+    .ico { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: linear-gradient(135deg, rgba(45, 212, 191, .18), rgba(99, 102, 241, .18)); border: 1px solid rgba(99, 102, 241, .3); }
+    .ico svg { width: 18px; height: 18px; stroke: #b9c4ff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; }
+    @media (max-width: 900px) { .split { grid-template-columns: 1fr; } }
+    .keys { background: var(--bg-2); border: 1px solid var(--border); border-radius: 14px; padding: 8px 20px; }
+    .keys div { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); color: var(--text-2); }
+    .keys div:last-child { border-bottom: 0; }
+    kbd.k { font: 12px var(--mono); color: var(--text); border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 6px; padding: 2px 8px; background: var(--bg-3); }
+    .stats { display: flex; gap: 32px; flex-wrap: wrap; margin-top: 28px; }
+    .stats b { display: block; font-size: 28px; letter-spacing: -0.02em; }
+    .stats span { color: var(--text-3); font-size: 14px; }
+
+    /* open source */
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; max-width: 920px; margin: 0 auto; }
+    @media (max-width: 760px) { .steps { grid-template-columns: 1fr; } }
+    .step { background: var(--bg-2); border: 1px solid var(--border); border-radius: 14px; padding: 24px; }
+    .step b { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: rgba(45, 212, 191, .14); color: var(--teal); font-size: 14px; }
+    .step h3 { margin: 14px 0 6px; font-size: 17px; }
+    .step p { margin: 0; color: var(--text-2); font-size: 15px; }
+
+
+    /* faq */
+    .faq { max-width: 760px; margin: 0 auto; }
+    details { border-bottom: 1px solid var(--border); padding: 18px 0; }
+    summary { cursor: pointer; font-weight: 600; font-size: 17px; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
+    summary::after { content: "+"; color: var(--text-3); font-weight: 400; font-size: 22px; line-height: 1; }
+    details[open] summary::after { content: "–"; }
+    details p { color: var(--text-2); margin: 10px 0 0; }
+
+    .final { text-align: center; padding: 100px 0 110px; }
+    .dl { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 28px; }
+    footer { border-top: 1px solid var(--border); padding: 28px 0; color: var(--text-3); font-size: 14px; }
+    footer .wrap { display: flex; gap: 24px; align-items: center; flex-wrap: wrap; }
+    footer .spacer { flex: 1; }
+  </style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <linearGradient id="sg-lens" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2dd4bf"/><stop offset="1" stop-color="#6366f1"/></linearGradient>
+      <symbol id="logo" viewBox="0 0 64 64">
+        <path d="M46 13H26.5a9.5 9.5 0 0 0 0 19h11a9.5 9.5 0 0 1 0 19H18" fill="none" stroke="url(#sg-lens)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="47" cy="13" r="6.5" fill="#2dd4bf"/>
+        <circle cx="17" cy="51" r="6.5" fill="#6366f1"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <nav>
+    <div class="wrap">
+      <a class="brand" href="#"><svg width="26" height="26"><use href="#logo"/></svg><span class="brand-name">Steerglass</span></a>
+      <div class="links">
+        <a href="#speed">Speed</a>
+        <a href="#features">Features</a>
+        <a href="#keyboard">Keyboard</a>
+        <a href="#open-source">Open source</a>
+        <a href="/install/">Download</a>
+        <a href="/changelog/">Changelog</a>
+        <a href="#faq">FAQ</a>
+      </div>
+      <div class="spacer"></div>
+      <a class="btn small nav-gh" href="https://github.com/steerglass/steerglass" aria-label="Steerglass on GitHub"><svg class="gh-mark" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>GitHub</a>
+      <a class="btn small primary" href="#download">Download</a>
+    </div>
+  </nav>
+
+  <header class="hero wrap">
+    <span class="pill"><b>New</b> Native app for macOS, Windows &amp; Linux</span>
+    <h1>Every Kubernetes cluster. <br /><span class="grad">One fast window.</span></h1>
+    <p class="lead">Steerglass is a desktop app for teams that run many clusters. Browse, debug and operate all of them side by side — live, keyboard-first and ridiculously fast.</p>
+    <div class="cta">
+      <a class="btn primary" href="#download" id="hero-dl">Download</a>
+      <a class="btn" href="https://github.com/steerglass/steerglass"><svg class="gh-mark" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>View on GitHub</a>
+      <a class="watch" href="#demo"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg>Watch the 1-minute demo</a>
+    </div>
+    <div class="fine">Free and open source (Apache 2.0) · Every cluster, no account · Your kubeconfig never leaves your machine</div>
+    <div class="quick">
+      <span><i></i><b>&lt; 1 s</b> to load 500+ pods</span>
+      <span><i></i><b>~15×</b> less data than full objects</span>
+      <span><i></i><b>Native</b> Rust core, no Electron</span>
+    </div>
+
+    <!-- Illustrative mockup with made-up data. -->
+    <div class="shot" role="img" aria-label="Steerglass showing pods from two production clusters in one table, with health filters and CPU usage">
+      <div class="win">
+        <div class="side">
+          <div class="lights"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i>
+            <span><svg width="16" height="16"><use href="#logo"/></svg>Steerglass</span></div>
+          <div class="sec">Clusters</div>
+          <div class="ci on"><span class="d"></span>shop-eu-west<span class="et p">PROD</span></div>
+          <div class="ci on"><span class="d w"></span>shop-us-east<span class="et p">PROD</span></div>
+          <div class="ci"><span class="d"></span>shop-staging<span class="et s">STAGE</span></div>
+          <div class="ci"><span class="d"></span>shop-dev<span class="et v">DEV</span></div>
+          <div class="ci"><span class="d e"></span>edge-tokyo</div>
+          <div class="ci"><span class="d"></span>analytics</div>
+          <div class="sec">Workloads</div>
+          <div class="ci nav">Pods</div>
+          <div class="ci">Deployments</div>
+          <div class="ci">StatefulSets</div>
+          <div class="ci">CronJobs</div>
+          <div class="sec">Network</div>
+          <div class="ci">Services</div>
+          <div class="ci">Ingresses</div>
+        </div>
+        <div class="main">
+          <div class="strip"></div>
+          <div class="mbody">
+            <div class="bar"><h4>Pods</h4><span class="cnt">8 / 1,284</span><span class="chip"><span class="et p">PROD</span>shop-eu-west</span><span class="chip"><span class="et p">PROD</span>shop-us-east</span><span class="fl hide-m">⌕ checkout</span></div>
+            <div class="hc"><span class="on">All <b>8</b></span><span><i class="d"></i>Healthy <b>5</b></span><span><i class="d w"></i>Warning <b>1</b></span><span><i class="d e"></i>Failing <b>1</b></span><span class="hide-m"><i class="d n"></i>Other <b>1</b></span></div>
+            <table>
+              <thead><tr><th>Name</th><th>Cluster</th><th>Ready</th><th>Status</th><th class="hide-m">Restarts</th><th class="hide-m">CPU</th><th>Age</th></tr></thead>
+              <tbody>
+                <tr><td><span class="d"></span>checkout-api-7f9c6d8b4-x2kqp</td><td>shop-eu-west</td><td><span class="rb" style="--f:100%"><i></i>2/2</span></td><td><span class="pl ok">Running</span></td><td class="hide-m">0</td><td class="hide-m"><span class="ub" style="--f:46%"><i></i>184m</span></td><td>3d</td></tr>
+                <tr class="sel"><td><span class="d e"></span>checkout-api-7f9c6d8b4-m8wtz</td><td>shop-us-east</td><td><span class="rb" style="--f:50%;--c:#ff7b72"><i></i>1/2</span></td><td><span class="pl e">CrashLoopBackOff</span></td><td class="hide-m"><span class="hot">14</span> · 3m ago</td><td class="hide-m"><span class="ub" style="--f:4%"><i></i>12m</span></td><td>41m</td></tr>
+                <tr><td><span class="d"></span>checkout-worker-5c8d9f7b6-q4lrn</td><td>shop-eu-west</td><td><span class="rb" style="--f:100%"><i></i>1/1</span></td><td><span class="pl ok">Running</span></td><td class="hide-m">0</td><td class="hide-m"><span class="ub" style="--f:93%"><i></i>466m <span class="hot">⚠ 93%</span></span></td><td>3d</td></tr>
+                <tr><td><span class="d w"></span>checkout-worker-5c8d9f7b6-h7vbd</td><td>shop-us-east</td><td><span class="rb" style="--f:0%"><i></i>0/1</span></td><td><span class="pl w">ContainerCreating</span></td><td class="hide-m">0</td><td class="hide-m">–</td><td>12s</td></tr>
+                <tr><td><span class="d"></span>checkout-cache-0</td><td>shop-eu-west</td><td><span class="rb" style="--f:100%"><i></i>1/1</span></td><td><span class="pl ok">Running</span></td><td class="hide-m"><span class="hot">1</span> · 4d ago</td><td class="hide-m"><span class="ub" style="--f:21%"><i></i>52m</span></td><td>12d</td></tr>
+                <tr><td><span class="d"></span>checkout-cache-0</td><td>shop-us-east</td><td><span class="rb" style="--f:100%"><i></i>1/1</span></td><td><span class="pl ok">Running</span></td><td class="hide-m">0</td><td class="hide-m"><span class="ub" style="--f:18%"><i></i>45m</span></td><td>12d</td></tr>
+                <tr><td><span class="d n"></span>checkout-migrate-29071840-tk2vn</td><td>shop-eu-west</td><td><span class="rb" style="--f:0%"><i></i>0/1</span></td><td><span class="pl n">Completed</span></td><td class="hide-m">0</td><td class="hide-m">–</td><td>2h</td></tr>
+                <tr><td><span class="d"></span>checkout-gateway-6b7d5c9f8-pz9xc</td><td>shop-us-east</td><td><span class="rb" style="--f:100%"><i></i>1/1</span></td><td><span class="pl ok">Running</span></td><td class="hide-m">0</td><td class="hide-m"><span class="ub" style="--f:33%"><i></i>132m</span></td><td>6d</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section id="demo">
+    <div class="wrap">
+      <div style="text-align:center; margin-bottom: 32px">
+        <div class="eyebrow">See it in action</div>
+        <h2>One minute, five clusters.</h2>
+        <p class="sub" style="margin: 0 auto">Recorded in the real app on five local test clusters — only the typing and the waiting are sped up.</p>
+      </div>
+      <div class="video" id="demo-video">
+        <video controls playsinline preload="none" poster="/media/steerglass-demo-2.jpg" aria-label="Steerglass demo with narration">
+          <source src="/media/steerglass-demo-2.mp4" type="video/mp4">
+          <a href="/media/steerglass-demo-2.mp4">Download the demo video</a>
+        </video>
+        <button class="play" type="button" aria-label="Play the demo video"><span><svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg>Play · 1 min</span></button>
+      </div>
+    </div>
+  </section>
+
+  <section id="speed">
+    <div class="wrap">
+      <div class="eyebrow">Built for speed</div>
+      <h2>Fast where it counts: on your clusters.</h2>
+      <p class="sub">Steerglass asks the API server for exactly what's on screen, compressed, and keeps it live without redrawing what didn't change.</p>
+      <div class="speed">
+        <div class="metric"><b>&lt; 1<small> s</small></b><h3>500+ pods, connected</h3><p>From opening a cluster to every pod in the table, sign-in included.</p></div>
+        <div class="metric"><b>~15<small>×</small></b><h3>Less data</h3><p>The API server sends the printed columns instead of whole objects, gzip-compressed.</p></div>
+        <div class="metric"><b>10<small> ms</small></b><h3>To sort 5,000 rows</h3><p>Filtering and sorting stay instant, and only the visible rows are drawn.</p></div>
+        <div class="metric"><b>~10<small> MB</small></b><h3>Download</h3><p>On macOS and Windows: a native Rust core with the system's web view. No Electron, no bundled browser.</p></div>
+      </div>
+      <div class="bytes">
+        <h3>Data downloaded to list 529 pods</h3>
+        <div class="brow them"><span>Whole objects</span><div class="tr"><span></span></div><span class="v">6.4 MB</span></div>
+        <div class="brow us"><span>Steerglass</span><div class="tr"><span></span></div><span class="v">0.43 MB</span></div>
+        <p class="note">Measured on a real 529-pod cluster: the JSON list of whole Pod objects vs the server-side table Steerglass requests, both gzip-compressed as the API server sends them (compressed size estimated). Load time measured on the same cluster, from a laptop over the internet.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="wrap">
+      <div class="eyebrow">Built for many clusters</div>
+      <h2>Stop juggling contexts.</h2>
+      <p class="sub">kubectl and single-cluster dashboards make you switch, reconnect and re-filter all day. Steerglass keeps every cluster one keystroke away.</p>
+      <div class="grid">
+        <div class="card"><div class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></div>
+          <h3>Fleet overview</h3><p>Health, version, nodes, pods and API latency of every cluster, checked in parallel the moment you open the app.</p></div>
+        <div class="card"><div class="ico"><svg viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></div>
+          <h3>Needs attention</h3><p>Crash-looping pods, nodes that aren&#39;t ready and failed jobs from all your clusters, in one list. One click opens the culprit.</p></div>
+        <div class="card"><div class="ico"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 15 4-5 3 3 5-7"/></svg></div>
+          <h3>Resource charts</h3><p>CPU and memory per pod against its requests and limits, with history; node capacity and the busiest pods at a glance.</p></div>
+        <div class="card"><div class="ico"><svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/><path d="M8 6v12"/></svg></div>
+          <h3>Cross-cluster tables</h3><p>⌘-click two or more clusters and see the same resource across all of them in one live table, with a cluster column.</p></div>
+        <div class="card"><div class="ico"><svg viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/></svg></div>
+          <h3>Production stands out</h3><p>Every cluster carries its environment — prod, staging, dev — with a colored strip on top. On production, deleting or editing asks you to type the name.</p></div>
+        <div class="card"><div class="ico"><svg viewBox="0 0 24 24"><path d="m4 17 6-6-6-6"/><path d="M12 19h8"/></svg></div>
+          <h3>Logs, shell, port-forward</h3><p>Follow colored logs with search, open a shell in any container, forward ports from pods and services — all built in.</p></div>
+        <div class="card"><div class="ico"><svg viewBox="0 0 24 24"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/><path d="m9 14 2 2 4-4"/></svg></div>
+          <h3>Edit &amp; apply YAML</h3><p>Edit any object in a real code editor, or apply manifests with server-side apply. Every CRD in your cluster just works.</p></div>
+        <div class="card"><div class="ico"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></div>
+          <h3>Live, always</h3><p>Everything streams through Kubernetes watches, and only what changed on screen is redrawn. Thousands of rows stay smooth.</p></div>
+        <div class="card"><div class="ico"><svg viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
+          <h3>Private by design</h3><p>Talks straight to your API servers with your kubeconfig. Your cluster data never touches our servers, and there's no telemetry. Updates arrive signed.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="resources" style="padding-top: 0">
+    <div class="wrap split">
+      <div>
+        <div class="eyebrow">Resource charts</div>
+        <h2>See what every pod really uses.</h2>
+        <p class="sub" style="margin-bottom: 0">CPU and memory next to requests and limits, so a pod about to be throttled or killed stands out before it happens.</p>
+        <ul class="checks">
+          <li>History up to 24 hours, with a crosshair on every sample</li>
+          <li>CPU and memory columns right in the pods table</li>
+          <li>Node capacity: used, requested and still schedulable</li>
+          <li>Works with the metrics-server your cluster already has</li>
+        </ul>
+      </div>
+      <!-- Illustrative mockup with made-up data. -->
+      <div class="rpanel" role="img" aria-label="Steerglass Resources tab: a CPU chart over the last hour with request and limit lines">
+        <div class="rtabs"><span>Overview</span><span class="on">Resources</span><span>YAML</span><span>Logs</span><span>Shell</span></div>
+        <div class="rhead"><b>238m</b><span style="color: var(--text-2)">CPU · 48% of limit</span><span class="peak">peak 452m</span></div>
+        <svg viewBox="0 0 440 146">
+          <line x1="44" x2="436" y1="126" y2="126" stroke="#1a2030"/><text x="36" y="130" text-anchor="end">0</text>
+          <path d="M44.0 73.1 L50.6 67.8 L57.3 63.5 L63.9 60.9 L70.6 60.1 L77.2 60.9 L83.9 62.6 L90.5 64.4 L97.2 65.8 L103.8 66.4 L110.4 66.3 L117.1 66.2 L123.7 66.6 L130.4 68.3 L137.0 71.4 L143.7 75.7 L150.3 80.6 L156.9 85.0 L163.6 88.1 L170.2 89.3 L176.9 88.3 L183.5 85.7 L190.2 82.1 L196.8 78.4 L203.5 75.4 L210.1 73.4 L216.7 72.5 L223.4 72.0 L230.0 71.4 L236.7 70.1 L243.3 67.8 L250.0 64.6 L256.6 61.3 L263.3 58.6 L269.9 57.3 L276.5 58.0 L283.2 60.7 L289.8 65.0 L296.5 70.1 L303.1 61.9 L309.8 52.7 L316.4 42.0 L323.1 55.7 L329.7 68.3 L336.3 80.7 L343.0 80.6 L349.6 81.3 L356.3 82.5 L362.9 84.0 L369.6 84.9 L376.2 84.4 L382.8 82.3 L389.5 78.5 L396.1 73.4 L402.8 68.1 L409.4 63.4 L416.1 60.3 L422.7 59.1 L429.4 59.7 L436.0 61.5 L436 126 L44 126 Z" fill="#0d9488" fill-opacity=".18"/>
+          <path d="M44.0 73.1 L50.6 67.8 L57.3 63.5 L63.9 60.9 L70.6 60.1 L77.2 60.9 L83.9 62.6 L90.5 64.4 L97.2 65.8 L103.8 66.4 L110.4 66.3 L117.1 66.2 L123.7 66.6 L130.4 68.3 L137.0 71.4 L143.7 75.7 L150.3 80.6 L156.9 85.0 L163.6 88.1 L170.2 89.3 L176.9 88.3 L183.5 85.7 L190.2 82.1 L196.8 78.4 L203.5 75.4 L210.1 73.4 L216.7 72.5 L223.4 72.0 L230.0 71.4 L236.7 70.1 L243.3 67.8 L250.0 64.6 L256.6 61.3 L263.3 58.6 L269.9 57.3 L276.5 58.0 L283.2 60.7 L289.8 65.0 L296.5 70.1 L303.1 61.9 L309.8 52.7 L316.4 42.0 L323.1 55.7 L329.7 68.3 L336.3 80.7 L343.0 80.6 L349.6 81.3 L356.3 82.5 L362.9 84.0 L369.6 84.9 L376.2 84.4 L382.8 82.3 L389.5 78.5 L396.1 73.4 L402.8 68.1 L409.4 63.4 L416.1 60.3 L422.7 59.1 L429.4 59.7 L436.0 61.5" fill="none" stroke="#2dd4bf" stroke-width="2" stroke-linejoin="round"/>
+          <line x1="44" x2="436" y1="75.1" y2="75.1" stroke="#7f879b" stroke-dasharray="4 4"/><text x="436" y="70.1" text-anchor="end">request 250m</text>
+          <line x1="44" x2="436" y1="24.2" y2="24.2" stroke="#a4abbb" stroke-dasharray="2 3"/><text x="436" y="19.2" text-anchor="end" style="fill:#a4abbb">limit 500m</text>
+          <line x1="316.4" x2="316.4" y1="14" y2="126" stroke="#e8ebf2" stroke-opacity=".35"/>
+          <circle cx="316.4" cy="42.0" r="4.5" fill="#2dd4bf" stroke="#0f131c" stroke-width="2"/>
+          <rect class="rtip" x="186.4" y="20" width="122" height="40" rx="6"/>
+          <text x="208.4" y="35">14:31:05</text><text x="208.4" y="51" style="fill:#e8ebf2;font-weight:600">452m · 90% of limit</text>
+          <text x="44" y="142">−1 h</text><text x="436" y="142" text-anchor="end">now</text>
+        </svg>
+        <div class="rcont"><span>api</span><i style="--f:60%"></i><i style="--f:54%"></i></div>
+        <div class="rcont"><span>istio-proxy</span><i style="--f:31%"></i><i style="--f:72%"></i></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="keyboard" style="background: var(--bg-2); border-block: 1px solid var(--border)">
+    <div class="wrap split">
+      <div>
+        <div class="eyebrow">Keyboard first</div>
+        <h2>Your hands never leave the keys.</h2>
+        <p class="sub" style="margin-bottom:0">Press <kbd class="k">⌘K</kbd> and type: a resource, a cluster, a namespace or an action. Navigate tables with <kbd class="k">j</kbd> <kbd class="k">k</kbd>, open logs with <kbd class="k">L</kbd>, jump to your favorite clusters with <kbd class="k">⌘1</kbd>–<kbd class="k">⌘9</kbd>.</p>
+        <div class="stats">
+          <div><b>~10 MB</b><span>download</span></div>
+          <div><b>Rust</b><span>native core, no Electron</span></div>
+          <div><b>0</b><span>telemetry</span></div>
+        </div>
+      </div>
+      <div class="keys">
+        <div>Command palette <kbd class="k">⌘K</kbd></div>
+        <div>Filter the table <kbd class="k">/</kbd></div>
+        <div>Logs · Shell · YAML <span><kbd class="k">L</kbd> <kbd class="k">S</kbd> <kbd class="k">E</kbd></span></div>
+        <div>Rollout restart <kbd class="k">R</kbd></div>
+        <div>Only failing pods <kbd class="k">status:bad</kbd></div>
+        <div>Jump to cluster <kbd class="k">⌘1…9</kbd></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="open-source">
+    <div class="wrap">
+      <div style="text-align:center">
+        <div class="eyebrow">Open source</div>
+        <h2>Free, open, and yours to check.</h2>
+        <p class="sub" style="margin: 0 auto 48px">Steerglass is free and open source under the Apache 2.0 license. Every feature, every cluster, no account — and the code that touches your clusters is there for you to read.</p>
+      </div>
+      <div class="steps">
+        <div class="step"><b>1</b><h3>Everything included</h3><p>Live tables across clusters, logs, shell, port-forward, YAML, charts. No plans, no limits, nothing to sign up for.</p></div>
+        <div class="step"><b>2</b><h3>Read the code</h3><p>Steerglass holds the keys to your production clusters. You don’t have to take our word for what it does with them: <a href="https://github.com/steerglass/steerglass">the code is on GitHub</a>.</p></div>
+        <div class="step"><b>3</b><h3>Built in the open</h3><p>Report bugs, suggest ideas and send pull requests on <a href="https://github.com/steerglass/steerglass/issues">GitHub</a> — or use Help → Send feedback in the app.</p></div>
+      </div>
+      <p style="text-align:center; margin-top: 28px"><a class="btn primary" href="https://github.com/steerglass/steerglass"><svg class="gh-mark" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>Star Steerglass on GitHub</a></p>
+    </div>
+  </section>
+
+  <section id="faq" style="padding-top: 40px">
+    <div class="wrap faq">
+      <div class="eyebrow" style="text-align:center">FAQ</div>
+      <h2 style="text-align:center; margin-bottom: 30px">Questions</h2>
+      <details><summary>Does Steerglass send my cluster data anywhere?</summary>
+        <p>No. Steerglass talks directly from your computer to your Kubernetes API servers using your existing kubeconfig. Your cluster data never leaves your machine and there's no telemetry.</p></details>
+      <details><summary>Which clusters and auth methods are supported?</summary>
+        <p>Anything kubectl can reach: EKS, GKE, AKS, OpenShift, k3s, kind, minikube, Rancher and bare metal. Token, client-certificate, OIDC and exec credential plugins (gke-gcloud-auth-plugin, aws, kubelogin…) all work as they do in your terminal.</p></details>
+      <details><summary>How is it different from Lens, k9s or Headlamp?</summary>
+        <p>Steerglass is built for working across many clusters at once: their resources land side by side in one live table, and it stays fast on big clusters. Lens, k9s and Headlamp are great tools with strengths of their own — Helm and extensions, the terminal and in-cluster use. See our honest comparisons with <a href="/compare/lens/">Lens</a>, <a href="/compare/k9s/">k9s</a> and <a href="/compare/headlamp/">Headlamp</a>.</p></details>
+      <details><summary>Do I need an account?</summary>
+        <p>No. Steerglass has no accounts: download it and it works with every cluster and every feature.</p></details>
+      <details><summary>Is it really free?</summary>
+        <p>Yes. Steerglass is open source under the Apache 2.0 license: free to use at work and at home, with every cluster and every feature. The code is on <a href="https://github.com/steerglass/steerglass">GitHub</a>.</p></details>
+      <details><summary>Where does Steerglass read my kubeconfig from?</summary>
+        <p>From <code>$KUBECONFIG</code>, <code>~/.kube/config</code> and the other kubeconfig files in <code>~/.kube</code> — exactly like kubectl. You can add more files in Settings.</p></details>
+      <details><summary>Do the resource charts need anything installed?</summary>
+        <p>They use metrics-server, which GKE, EKS and AKS include by default; elsewhere it's one manifest to apply. Requests and limits come from your pods. metrics-server only knows the current values, so Steerglass keeps the history itself — up to 24 hours — while a cluster is open in the app.</p></details>
+      <details><summary>How do updates work?</summary>
+        <p>Steerglass checks steerglass.com for new versions every few hours and offers to install them with one click. Every update is signed with our key, and the app refuses to install one it can't verify — the signing key isn't on the web server, so not even a compromised steerglass.com could push an update. Each release also has SHA-256 checksums. More on the <a href="/security/">security page</a>.</p></details>
+      <details><summary>How can I report a bug or contribute?</summary>
+        <p>Open an issue on <a href="https://github.com/steerglass/steerglass/issues">GitHub</a>, or use Help → Send feedback in the app: it fills in your version and system. Pull requests are welcome too. For anything else, write to <a href="mailto:hello@steerglass.com">hello@steerglass.com</a>.</p></details>
+    </div>
+  </section>
+
+  <section class="final" id="download">
+    <div class="wrap">
+      <svg width="64" height="64"><use href="#logo"/></svg>
+      <h2>Take the helm.</h2>
+      <p class="sub" style="margin: 0 auto">Download Steerglass and connect your clusters in seconds — free, open source, no account needed.</p>
+      <div class="dl">
+        <a class="btn primary" data-os="mac" href="/download/steerglass-mac.dmg">macOS (Apple Silicon &amp; Intel)</a>
+        <a class="btn" data-os="win" href="/download/steerglass-windows-setup.exe">Windows</a>
+        <a class="btn" data-os="linux" href="/install/#linux">Linux</a>
+      </div>
+      <div class="fine">Homebrew, MSI, apt and dnf repositories, AppImage and more: <a href="/install/">all install options</a>.<br>Requires macOS 11+, Windows 10+ or a recent Linux with WebKitGTK.</div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <span class="brand" style="font-size:15px"><svg width="20" height="20"><use href="#logo"/></svg>Steerglass</span>
+      <span>© 2026 Steerglass</span>
+      <div class="spacer"></div>
+      <a href="/changelog/">Changelog</a>
+      <a href="https://github.com/steerglass/steerglass">GitHub</a>
+      <a href="/compare/">Compare</a>
+      <a href="/security/">Security</a>
+      <a href="/privacy/">Privacy</a>
+      <a href="mailto:hello@steerglass.com">hello@steerglass.com</a>
+      <span>Kubernetes is a registered trademark of The Linux Foundation.</span>
+    </div>
+  </footer>
+
+  <script>
+    // Analytics events (Umami, cookieless): downloads, GitHub and install clicks.
+    document.addEventListener("click", function (e) {
+      var a = e.target.closest && e.target.closest("a[href]");
+      if (!a || !window.umami) return;
+      var path = a.pathname;
+      try {
+        if (path.indexOf("/download/") === 0) umami.track("download", { file: path.split("/").pop(), page: "/" });
+        else if (a.hostname === "github.com") umami.track("github-click", { where: a.closest("nav") ? "nav" : a.closest("section") ? (a.closest("section").id || "section") : a.closest("header") ? "hero" : "page" });
+        else if (path === "/install/") umami.track("install-click", { os: a.hash.slice(1) || "auto" });
+      } catch (err) {}
+    });
+
+    // Demo video: our own play button over the poster, then the native controls.
+    (function () {
+      var box = document.getElementById("demo-video");
+      var video = box.querySelector("video");
+      var started = false, finished = false;
+      // Native controls only once it plays (without JavaScript they stay, and the button is hidden).
+      video.controls = false;
+      box.classList.add("ready");
+      box.querySelector(".play").addEventListener("click", function () { video.controls = true; video.play(); });
+      video.addEventListener("play", function () {
+        box.classList.add("playing");
+        if (!started && window.umami) umami.track("demo-play");
+        started = true;
+      });
+      video.addEventListener("timeupdate", function () {
+        if (!finished && video.duration && video.currentTime / video.duration > 0.9) {
+          finished = true;
+          if (window.umami) umami.track("demo-complete");
+        }
+      });
+    })();
+
+    // Promote the download for the visitor's OS.
+    (function () {
+      var ua = navigator.userAgent;
+      var os = /Mac/.test(ua) ? "mac" : /Win/.test(ua) ? "win" : /Linux/.test(ua) ? "linux" : null;
+      var names = { mac: "macOS", win: "Windows", linux: "Linux" };
+      if (!os) return;
+      document.getElementById("hero-dl").textContent = "Download for " + names[os];
+      document.querySelectorAll(".dl .btn").forEach(function (b) {
+        b.classList.toggle("primary", b.dataset.os === os);
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,84 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Steerglass",
+  "version": "0.2.10",
+  "identifier": "com.steerglass.app",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Steerglass",
+        "width": 1440,
+        "height": 900,
+        "minWidth": 960,
+        "minHeight": 600,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "dragDropEnabled": false,
+        "trafficLightPosition": {
+          "x": 18,
+          "y": 24
+        }
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src ipc: http://ipc.localhost"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "category": "DeveloperTool",
+    "shortDescription": "Fast multi-cluster Kubernetes desktop client",
+    "longDescription": "Steerglass lets you browse, debug and operate many Kubernetes clusters at once: live resource tables, logs, shell, port-forward, YAML editing and a keyboard-first command palette.",
+    "copyright": "© 2026 Davide Bettio",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "macOS": {
+      "minimumSystemVersion": "11.0",
+      "entitlements": "macos/Direct.entitlements",
+      "hardenedRuntime": true
+    },
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      },
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    },
+    "linux": {
+      "deb": {
+        "section": "devel"
+      },
+      "rpm": {
+        "release": "1"
+      }
+    },
+    "publisher": "Steerglass",
+    "homepage": "https://steerglass.com",
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEZBQkE4MkNGODgyQzlCNzgKUldSNG15eUl6NEs2K3Q4L2pva0FLYlhiN24vaVVjU0o3OUNFbmlNbDZsanZuT3I1NXA4Zzh4UmYK",
+      "endpoints": [
+        "https://steerglass.com/updates/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
+}

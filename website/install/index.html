@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Install Steerglass — macOS, Windows and Linux</title>
+  <meta name="description" content="Install Steerglass, the fast Kubernetes desktop client: Homebrew or .dmg on macOS, installer or MSI on Windows, apt and dnf repositories, AppImage, .deb and .rpm on Linux.">
+  <link rel="canonical" href="https://steerglass.com/install/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Steerglass">
+  <meta property="og:url" content="https://steerglass.com/install/">
+  <meta property="og:title" content="Install Steerglass">
+  <meta property="og:description" content="Install Steerglass, the fast Kubernetes desktop client: Homebrew or .dmg on macOS, installer or MSI on Windows, apt and dnf repositories, AppImage, .deb and .rpm on Linux.">
+  <meta property="og:image" content="https://steerglass.com/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Steerglass — every Kubernetes cluster, one fast window">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Install Steerglass">
+  <meta name="twitter:description" content="Install Steerglass, the fast Kubernetes desktop client: Homebrew or .dmg on macOS, installer or MSI on Windows, apt and dnf repositories, AppImage, .deb and .rpm on Linux.">
+  <meta name="twitter:image" content="https://steerglass.com/og.png">
+  <link rel="icon" href="/favicon.ico" sizes="48x48">
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#0b0e15">
+  <!-- Analytics: only the campaign parameters (utm_*, ref) leave the page, never the rest of the address. -->
+  <script>function sgAnalyticsUrl(t,p){try{var u=new URL(p.url),k=new URLSearchParams();u.searchParams.forEach(function(v,n){if(/^utm_|^ref$/.test(n))k.set(n,v)});u.search=k.toString();p.url=u.toString()}catch(e){}return p}</script>
+  <script defer src="/u/script.js" data-website-id="b2221c28-03bc-4ac3-8840-a808b5ce874b" data-host-url="https://steerglass.com/u" data-domains="steerglass.com" data-before-send="sgAnalyticsUrl"></script>
+  <link rel="stylesheet" href="/portal.css?v=289445442d">
+  <style>
+    .distros { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    @media (max-width: 860px) { .distros { grid-template-columns: minmax(0, 1fr); } }
+    .distro { display: flex; flex-direction: column; gap: 14px; }
+    .distro .top { display: flex; align-items: center; gap: 12px; }
+    .distro .top h2 { font-size: 18px; margin: 0; }
+    .distro .top .badge { margin-left: auto; }
+    .distro p { margin: 0; color: var(--text-2); font-size: 14.5px; }
+    .distro.soon { opacity: .85; border-style: dashed; }
+    .osbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 6px 0 30px; }
+    .os-panel[hidden] { display: none; }
+    .steps-list { margin: 0; padding-left: 20px; color: var(--text-2); font-size: 14.5px; }
+    .steps-list li + li { margin-top: 6px; }
+    .archbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 6px 0 26px; }
+    .req { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+    @media (max-width: 860px) { .req { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    .req div b { display: block; }
+    .req div span { color: var(--text-2); font-size: 14px; }
+    .alt summary { cursor: pointer; color: var(--text-2); font-size: 14px; }
+    .alt summary:hover { color: var(--text); }
+    .alt[open] summary { margin-bottom: 12px; }
+    .alt > * + * { margin-top: 10px; }
+    .fpr { overflow-x: auto; white-space: pre; }
+    .sums { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    .sums td { padding: 8px 14px 8px 0; border-top: 1px solid var(--border); vertical-align: top; }
+    .sums td:first-child { white-space: nowrap; color: var(--text); }
+    .sums code { font-family: var(--mono); font-size: 12.5px; color: var(--text-2); overflow-wrap: anywhere; word-break: break-all; }
+    .scroll { overflow-x: auto; }
+    .verify-how { color: var(--text-2); font-size: 14.5px; margin: 0 0 14px; }
+    @media (max-width: 520px) { .distro .top { flex-wrap: wrap; } .distro .top .badge { order: -1; margin: 0 100% 0 0; } }
+  </style>
+</head>
+<body>
+  <nav class="site"><div class="wrap">
+    <a class="brand" href="/"><img src="/logo.svg" width="26" height="26" alt=""><span class="brand-name">Steerglass</span></a>
+    <div class="links"><a href="/#features">Features</a><a href="/install/" class="on">Download</a><a href="/changelog/">Changelog</a><a href="/#faq">FAQ</a></div>
+    <div class="spacer"></div>
+    <div class="who"><a class="btn small" href="https://github.com/steerglass/steerglass" aria-label="Steerglass on GitHub"><svg class="gh-mark" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>GitHub</a><a class="btn small primary" href="/install/">Download</a></div>
+  </div></nav>
+
+  <main class="wrap">
+    <header class="page-head">
+      <div class="eyebrow">Download</div>
+      <h1>Install <span class="grad">Steerglass</span></h1>
+      <p class="lead">Native app for macOS, Windows and Linux. Pick your system — we guessed it from your browser — and follow the steps.</p>
+    </header>
+
+    <div class="osbar">
+      <div class="seg" role="tablist" aria-label="System">
+        <button type="button" data-os="macos" role="tab">macOS</button>
+        <button type="button" data-os="windows" role="tab">Windows</button>
+        <button type="button" data-os="linux" role="tab">Linux</button>
+      </div>
+      <span class="faint small" id="version"></span>
+    </div>
+
+    <div class="os-panel" data-panel="macos" role="tabpanel" hidden>
+      <div class="distros">
+        <section class="card distro">
+          <div class="top"><div class="ico"><svg viewBox="0 0 24 24"><path d="M6 8h10v10a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3z"/><path d="M16 10h1.5a2.5 2.5 0 0 1 0 5H16"/><path d="M8 3v2M11 2v3M14 3v2"/></svg></div><h2>Homebrew</h2><span class="badge">ONE COMMAND</span></div>
+          <p>If you use Homebrew, install Steerglass from our tap. It <b>updates itself</b>; <code>brew upgrade</code> works too.</p>
+          <div data-cmd="brew install --cask davidebettio/tap/steerglass"></div>
+          <p class="small">To uninstall: <code>brew uninstall --cask steerglass</code> (add <code>--zap</code> to remove its settings too).</p>
+        </section>
+        <section class="card distro">
+          <div class="top"><div class="ico"><svg viewBox="0 0 24 24"><path d="M16 3c0 2-1.5 3.5-3.5 3.5 0-2 1.5-3.5 3.5-3.5"/><path d="M12 7c-1.5 0-2.5-.8-4-.8C5.5 6.2 4 8.5 4 11.5 4 16 7 21 9 21c1.2 0 1.7-.7 3-.7s1.7.7 3 .7c2 0 4-4 4.5-6-2-.8-3-2.5-3-4.5 0-1.8 1-3 2.3-3.8C17.8 5.5 16.5 5 15.5 5 14 5 13 7 12 7"/></svg></div><h2>Download the app</h2><span class="badge">.DMG</span></div>
+          <p>One app for Apple Silicon and Intel Macs, signed and notarized by Apple. It <b>updates itself</b>.</p>
+          <div class="row"><a class="btn primary" href="/download/steerglass-mac.dmg">Download for Mac</a></div>
+          <ol class="steps-list">
+            <li>Open the downloaded <code>.dmg</code>.</li>
+            <li>Drag <b>Steerglass</b> into <b>Applications</b>.</li>
+            <li>Open it from Applications or Spotlight.</li>
+          </ol>
+        </section>
+      </div>
+      <section style="padding: 48px 0 8px">
+        <h2 style="font-size:24px; margin-bottom:18px">Requirements</h2>
+        <div class="req">
+          <div><b>macOS 11 Big Sur or later</b><span>Including the latest macOS</span></div>
+          <div><b>Apple Silicon or Intel</b><span>One universal app for both</span></div>
+          <div><b>Your kubeconfig</b><span>~/.kube/config and $KUBECONFIG, as kubectl</span></div>
+          <div><b>12 MB download</b><span>Native app, no Electron</span></div>
+        </div>
+      </section>
+    </div>
+
+    <div class="os-panel" data-panel="windows" role="tabpanel" hidden>
+      <div class="distros">
+        <section class="card distro">
+          <div class="top"><div class="ico"><svg viewBox="0 0 24 24"><path d="M3 5.5 10.5 4.5v7H3z"/><path d="M13 4.2 21 3v8.5h-8z"/><path d="M3 12.5h7.5v7L3 18.5z"/><path d="M13 12.5h8V21l-8-1.2z"/></svg></div><h2>Installer</h2><span class="badge">RECOMMENDED</span></div>
+          <p>Installs Steerglass for your user, no admin rights needed. It <b>updates itself</b>.</p>
+          <div class="row"><a class="btn primary" href="/download/steerglass-windows-setup.exe">Download for Windows</a></div>
+          <ol class="steps-list">
+            <li>Run <code>steerglass-windows-setup.exe</code>.</li>
+            <li>If Windows shows “Windows protected your PC”, click <b>More info</b> → <b>Run anyway</b>: the installer isn’t code-signed yet.</li>
+            <li>Open Steerglass from the Start menu.</li>
+          </ol>
+        </section>
+        <section class="card distro">
+          <div class="top"><div class="ico"><svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4-9 4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/></svg></div><h2>MSI package</h2><span class="badge soon">FOR IT TEAMS</span></div>
+          <p>For deploying Steerglass on many computers with Intune, Group Policy or your own tools.</p>
+          <div class="row"><a class="btn" href="/download/steerglass-windows-x86_64.msi">Download .msi</a></div>
+          <div data-cmd="msiexec /i steerglass-windows-x86_64.msi /qn"></div>
+        </section>
+      </div>
+      <section style="padding: 48px 0 8px">
+        <h2 style="font-size:24px; margin-bottom:18px">Requirements</h2>
+        <div class="req">
+          <div><b>Windows 10 or 11</b><span>64-bit (x64)</span></div>
+          <div><b>WebView2</b><span>Built into Windows 11; the installer adds it on Windows 10 if missing</span></div>
+          <div><b>Your kubeconfig</b><span>%USERPROFILE%\.kube\config and $KUBECONFIG, as kubectl</span></div>
+          <div><b>4 MB download</b><span>Native app, no Electron</span></div>
+        </div>
+      </section>
+    </div>
+
+    <div class="os-panel" data-panel="linux" role="tabpanel" hidden>
+    <div class="archbar">
+      <span class="muted">Architecture</span>
+      <div class="seg" role="radiogroup" aria-label="Architecture">
+        <button type="button" data-arch="x86_64" role="radio">x86_64 (Intel/AMD)</button>
+        <button type="button" data-arch="aarch64" role="radio">ARM64</button>
+      </div>
+    </div>
+
+    <div class="distros">
+      <section class="card distro">
+        <div class="top"><div class="ico"><svg viewBox="0 0 24 24"><path d="M12 3 4 7.5v9L12 21l8-4.5v-9z"/><path d="M4 7.5 12 12l8-4.5"/><path d="M12 12v9"/></svg></div><h2>AppImage</h2><span class="badge">ANY DISTRO</span></div>
+        <p>One file that runs on almost any distribution, with everything it needs inside. It <b>updates itself</b> when a new version is out.</p>
+        <div class="row"><a class="btn primary" data-href="/download/steerglass-linux-{arch}.appimage">Download AppImage</a></div>
+        <div data-cmd="chmod +x steerglass-linux-{arch}.appimage&#10;./steerglass-linux-{arch}.appimage"></div>
+        <p class="small">Ubuntu 22.04 and later need FUSE 2 to run AppImages: <code>sudo apt install libfuse2</code> (on 24.04: <code>libfuse2t64</code>).</p>
+      </section>
+
+      <section class="card distro">
+        <div class="top"><div class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8a4 4 0 1 0 4 4"/></svg></div><h2>Debian, Ubuntu, Mint</h2><span class="badge">APT REPOSITORY</span></div>
+        <p>Add the Steerglass repository once: new versions then arrive with <code>apt upgrade</code>, like the rest of your system. Also for Pop!_OS, elementary OS and other Debian-based systems.</p>
+        <div data-cmd="sudo install -d -m 0755 /etc/apt/keyrings&#10;wget -qO- https://steerglass.com/keys/steerglass.gpg | sudo tee /etc/apt/keyrings/steerglass.gpg > /dev/null&#10;echo &quot;deb [signed-by=/etc/apt/keyrings/steerglass.gpg] https://steerglass.com/apt stable main&quot; | sudo tee /etc/apt/sources.list.d/steerglass.list&#10;sudo apt update &amp;&amp; sudo apt install steerglass"></div>
+        <details class="alt">
+          <summary>Or install the .deb by hand</summary>
+          <div class="row"><a class="btn small" data-href="/download/steerglass-linux-{arch}.deb">Download .deb</a></div>
+          <div data-cmd="sudo apt install ./steerglass-linux-{arch}.deb"></div>
+        </details>
+      </section>
+
+      <section class="card distro">
+        <div class="top"><div class="ico"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9"/><path d="M12 7v10M7 12h10"/></svg></div><h2>Fedora, RHEL, openSUSE</h2><span class="badge">DNF REPOSITORY</span></div>
+        <p>Add the repository once and update with <code>dnf upgrade</code>. On first install dnf asks to import the Steerglass key: check that the fingerprint matches the one below.</p>
+        <div data-cmd="sudo curl -fsSLo /etc/yum.repos.d/steerglass.repo https://steerglass.com/rpm/steerglass.repo&#10;sudo dnf install steerglass"></div>
+        <p class="small">RHEL, Rocky and AlmaLinux 10: enable EPEL first (<code>sudo dnf install epel-release</code>), which provides WebKitGTK 4.1. Version 9 doesn’t ship it: use the AppImage.</p>
+        <details class="alt">
+          <summary>openSUSE, or install the .rpm by hand</summary>
+          <div data-cmd="sudo zypper addrepo https://steerglass.com/rpm/steerglass.repo&#10;sudo zypper install steerglass"></div>
+          <div class="row"><a class="btn small" data-href="/download/steerglass-linux-{arch}.rpm">Download .rpm</a></div>
+          <div data-cmd="sudo dnf install ./steerglass-linux-{arch}.rpm"></div>
+        </details>
+      </section>
+
+      <section class="card distro soon">
+        <div class="top"><div class="ico"><svg viewBox="0 0 24 24"><path d="M12 3 3.5 20h17z"/><path d="M9 15c1.5-1 4.5-1 6 0"/></svg></div><h2>Arch Linux, Manjaro</h2><span class="badge soon">COMING SOON</span></div>
+        <p>An AUR package is on the way (new AUR accounts are temporarily paused). Until then, the AppImage works on Arch and updates itself.</p>
+        <pre class="cmd"><span class="c"># soon</span>
+yay -S steerglass-bin</pre>
+      </section>
+    </div>
+
+    <section style="padding: 48px 0 8px">
+      <h2 style="font-size:24px; margin-bottom:18px">Requirements</h2>
+      <div class="req">
+        <div><b>x86_64 or ARM64</b><span>64-bit Intel/AMD or ARM (e.g. Ampere, Raspberry Pi 5, Graviton)</span></div>
+        <div><b>glibc 2.35+</b><span>Ubuntu 22.04, Debian 12, Fedora 36 or newer</span></div>
+        <div><b>WebKitGTK 4.1</b><span>Installed automatically with .deb and .rpm, bundled in the AppImage</span></div>
+        <div><b>X11 or Wayland</b><span>Any desktop: GNOME, KDE Plasma, Xfce…</span></div>
+      </div>
+    </section>
+
+    <section style="padding: 8px 0 24px">
+      <h2 style="font-size:24px; margin-bottom:10px">Repository key</h2>
+      <p class="muted" style="margin:0 0 12px">Packages and repository indexes are signed with this key (<a href="/keys/steerglass.asc">steerglass.asc</a>):</p>
+      <pre class="cmd fpr">BF36 B823 7521 CA83 88E0  02C7 91F9 627C E6D9 1421</pre>
+    </section>
+
+    </div>
+
+    <section id="verify" style="padding: 32px 0 0">
+      <h2 style="font-size:24px; margin-bottom:10px">Verify your download</h2>
+      <p class="verify-how" data-verify="macos">The app is signed with our Apple Developer ID and notarized by Apple. To check the file: <code>shasum -a 256 steerglass-mac.dmg</code></p>
+      <p class="verify-how" data-verify="windows" hidden>The installers aren’t code-signed yet, so SmartScreen may warn you the first time. Check the file before running it, in PowerShell: <code>Get-FileHash .\steerglass-windows-setup.exe</code></p>
+      <p class="verify-how" data-verify="linux" hidden>Packages and repositories are signed with the key above. To check a file: <code>sha256sum steerglass-linux-x86_64.appimage</code></p>
+      <div class="scroll"><table class="sums" id="sums"></table></div>
+      <p class="faint small" style="margin-top:12px">Updates are signed too, and the app refuses any it can’t verify. More on <a href="/security/">how Steerglass is signed</a>.</p>
+    </section>
+
+    <section style="padding: 40px 0 90px">
+      <div class="card feature row" style="justify-content:space-between">
+        <div><h3>Then open Steerglass</h3><p class="muted" style="margin:0">It finds your clusters on its own: every cluster, no account needed. Found a bug or have an idea? Open an issue on GitHub — or Help → Send feedback in the app.</p></div>
+        <a class="btn primary" href="https://github.com/steerglass/steerglass/issues">Open an issue</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site"><div class="wrap"><span class="brand" style="font-size:15px"><img src="/logo.svg" width="20" height="20" alt="">Steerglass</span><span>© 2026 Steerglass</span><div class="spacer"></div><a href="/changelog/">Changelog</a><a href="https://github.com/steerglass/steerglass">GitHub</a><a href="/compare/">Compare</a><a href="/security/">Security</a><a href="/privacy/">Privacy</a><a href="mailto:hello@steerglass.com">hello@steerglass.com</a></div></footer>
+
+  <script src="/portal.js?v=11473a3429"></script>
+  <script>
+    // The system tab (from the address, or guessed from the browser) and, for Linux, the architecture.
+    (function () {
+      // SHA-256 of the current downloads, from download/sha256sums.txt (written by every release).
+      var sums = [], currentOs = null;
+      var osOf = function (f) { return /-mac/.test(f) ? "macos" : /-windows/.test(f) ? "windows" : "linux"; };
+      function showSums() {
+        var table = document.getElementById("sums");
+        if (!table) return;
+        table.replaceChildren.apply(table, sums.filter(function (s) { return osOf(s[1]) === currentOs; }).map(function (s) {
+          var tr = document.createElement("tr"), name = document.createElement("td"), hash = document.createElement("td"), code = document.createElement("code");
+          name.textContent = s[1];
+          code.textContent = s[0];
+          hash.appendChild(code);
+          tr.append(name, hash);
+          return tr;
+        }));
+      }
+      fetch("/download/sha256sums.txt", { cache: "no-store" }).then(function (r) { return r.ok ? r.text() : ""; }).then(function (t) {
+        sums = t.split("\n").map(function (l) { return /^([0-9a-f]{64}) {2}(\S+)$/.exec(l); }).filter(Boolean).map(function (m) { return [m[1], m[2]]; });
+        showSums();
+      }).catch(function () {});
+      var guess = /Mac/.test(navigator.userAgent) ? "macos" : /Win/.test(navigator.userAgent) ? "windows" : /Linux|X11|CrOS/.test(navigator.userAgent) ? "linux" : "macos";
+      function pickOs(os, push) {
+        document.querySelectorAll("[data-os]").forEach(function (b) {
+          var on = b.dataset.os === os;
+          b.classList.toggle("on", on);
+          b.setAttribute("aria-selected", on);
+        });
+        document.querySelectorAll("[data-panel]").forEach(function (p) { p.hidden = p.dataset.panel !== os; });
+        document.querySelectorAll("[data-verify]").forEach(function (p) { p.hidden = p.dataset.verify !== os; });
+        currentOs = os;
+        showSums();
+        if (push) history.replaceState(null, "", "#" + os);
+      }
+      document.querySelectorAll("[data-os]").forEach(function (b) { b.addEventListener("click", function () { pickOs(b.dataset.os, true); track("install-os", { os: b.dataset.os }); }); });
+      var fromHash = function () { return ["macos", "windows", "linux"].indexOf(location.hash.slice(1)) >= 0 ? location.hash.slice(1) : null; };
+      pickOs(fromHash() || guess, false);
+      window.addEventListener("hashchange", function () { if (fromHash()) pickOs(fromHash(), false); });
+
+      var cmds = document.querySelectorAll("[data-cmd]");
+      function pickArch(arch) {
+        document.querySelectorAll("[data-arch]").forEach(function (b) {
+          var on = b.dataset.arch === arch;
+          b.classList.toggle("on", on);
+          b.setAttribute("aria-checked", on);
+        });
+        document.querySelectorAll("[data-href]").forEach(function (a) { a.href = a.dataset.href.replace("{arch}", arch); });
+        cmds.forEach(function (c) { c.replaceChildren(copyBlock(c.dataset.cmd.split("{arch}").join(arch))); });
+        try { localStorage.setItem("sg-arch", arch); } catch (e) {}
+      }
+      document.querySelectorAll("[data-arch]").forEach(function (b) { b.addEventListener("click", function () { pickArch(b.dataset.arch); }); });
+      var saved = null;
+      try { saved = localStorage.getItem("sg-arch"); } catch (e) {}
+      pickArch(saved || (/aarch64|arm64/i.test(navigator.userAgent) ? "aarch64" : "x86_64"));
+      latestRelease().then(function (r) { if (r) document.getElementById("version").textContent = "Version " + r.version + " · " + date(r.pub_date); });
+    })();
+  </script>
+</body>
+</html>

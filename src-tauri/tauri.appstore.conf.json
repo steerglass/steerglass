@@ -1,0 +1,14 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "identifier": "com.steerglass.app",
+  "bundle": {
+    "macOS": {
+      "entitlements": "macos/AppStore.entitlements",
+      "minimumSystemVersion": "12.0",
+      "files": {
+        "embedded.provisionprofile": "macos/embedded.provisionprofile"
+      }
+    },
+    "createUpdaterArtifacts": false
+  }
+}
