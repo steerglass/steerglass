@@ -1,0 +1,37 @@
+name: Bug report
+description: Something doesn't work as it should
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please leave out anything private: cluster names and addresses, tokens and the content of Secrets.
+        A security problem? Report it privately instead: see SECURITY.md.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead. A screenshot helps.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open a cluster…
+        2. …
+  - type: input
+    id: version
+    attributes:
+      label: Steerglass version and system
+      description: In the app, Help → Send feedback fills this in. Otherwise About Steerglass shows the version.
+      placeholder: Steerglass 0.3.0 on macOS 15
+    validations:
+      required: true
+  - type: input
+    id: cluster
+    attributes:
+      label: Kind of cluster
+      description: Where it runs and how you sign in to it, if it matters.
+      placeholder: EKS 1.31 with aws eks get-token, k3d, GKE with gke-gcloud-auth-plugin…
