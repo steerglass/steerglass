@@ -164,6 +164,11 @@ Help → Send feedback opens a new issue with your version and system filled in.
 Steerglass is young (version 0.x) and moves fast: if something doesn't work with your clusters, an
 issue helps a lot.
 
+## Sponsors
+
+Steerglass is free and open source, and sponsors help keep it that way. Companies get their logo and a
+link here and on [steerglass.com](https://steerglass.com): see [steerglass.com/sponsor](https://steerglass.com/sponsor/).
+
 ## License
 
 Steerglass is licensed under the [Apache License 2.0](LICENSE).
