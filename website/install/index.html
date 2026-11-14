@@ -122,7 +122,7 @@
           <div class="row"><a class="btn primary" href="/download/steerglass-windows-setup.exe">Download for Windows</a></div>
           <ol class="steps-list">
             <li>Run <code>steerglass-windows-setup.exe</code>.</li>
-            <li>If Windows shows “Windows protected your PC”, click <b>More info</b> → <b>Run anyway</b>: the installer isn’t code-signed yet. Windows builds will be signed with free code signing provided by <a href="https://signpath.io">SignPath.io</a>, certificate by <a href="https://signpath.org">SignPath Foundation</a> (<a href="/code-signing/">code signing policy</a>).</li>
+            <li>If Windows shows “Windows protected your PC”, click <b>More info</b> → <b>Run anyway</b>: the installer isn’t code-signed yet.</li>
             <li>Open Steerglass from the Start menu.</li>
           </ol>
         </section>
@@ -215,7 +215,7 @@ yay -S steerglass-bin</pre>
     <section id="verify" style="padding: 32px 0 0">
       <h2 style="font-size:24px; margin-bottom:10px">Verify your download</h2>
       <p class="verify-how" data-verify="macos">The app is signed with our Apple Developer ID and notarized by Apple. To check the file: <code>shasum -a 256 steerglass-mac.dmg</code></p>
-      <p class="verify-how" data-verify="windows" hidden>The installers aren’t code-signed yet (we are setting up <a href="/code-signing/">code signing with SignPath Foundation</a>), so SmartScreen may warn you the first time. Check the file before running it, in PowerShell: <code>Get-FileHash .\steerglass-windows-setup.exe</code></p>
+      <p class="verify-how" data-verify="windows" hidden>The installers aren’t code-signed yet, so SmartScreen may warn you the first time. Check the file before running it, in PowerShell: <code>Get-FileHash .\steerglass-windows-setup.exe</code></p>
       <p class="verify-how" data-verify="linux" hidden>Packages and repositories are signed with the key above. To check a file: <code>sha256sum steerglass-linux-x86_64.appimage</code></p>
       <div class="scroll"><table class="sums" id="sums"></table></div>
       <p class="faint small" style="margin-top:12px">Updates are signed too, and the app refuses any it can’t verify. More on <a href="/security/">how Steerglass is signed</a>.</p>
@@ -229,7 +229,7 @@ yay -S steerglass-bin</pre>
     </section>
   </main>
 
-  <footer class="site"><div class="wrap"><span class="brand" style="font-size:15px"><img src="/logo.svg" width="20" height="20" alt="">Steerglass</span><span>© 2026 Steerglass</span><div class="spacer"></div><a href="/changelog/">Changelog</a><a href="https://github.com/steerglass/steerglass">GitHub</a><a href="/sponsor/">Sponsor</a><a href="/compare/">Compare</a><a href="/security/">Security</a><a href="/code-signing/">Code signing</a><a href="/privacy/">Privacy</a><a href="mailto:hello@steerglass.com">hello@steerglass.com</a></div></footer>
+  <footer class="site"><div class="wrap"><span class="brand" style="font-size:15px"><img src="/logo.svg" width="20" height="20" alt="">Steerglass</span><span>© 2026 Steerglass</span><div class="spacer"></div><a href="/changelog/">Changelog</a><a href="https://github.com/steerglass/steerglass">GitHub</a><a href="/sponsor/">Sponsor</a><a href="/compare/">Compare</a><a href="/security/">Security</a><a href="/privacy/">Privacy</a><a href="mailto:hello@steerglass.com">hello@steerglass.com</a></div></footer>
 
   <script src="/portal.js?v=5f2f4ae9e4"></script>
   <script>

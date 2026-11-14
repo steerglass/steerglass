@@ -105,9 +105,7 @@ On Windows and Linux, Ctrl takes the place of ⌘.
 Steerglass talks directly from your computer to your Kubernetes API servers. Nothing about your
 clusters is sent anywhere: the app has no accounts, no telemetry and no crash reporting, and it only
 contacts steerglass.com to check for and download updates. How releases and updates are signed:
-[steerglass.com/security](https://steerglass.com/security/). Windows: free code signing provided by
-[SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org) (being set up;
-see the [code signing policy](https://steerglass.com/code-signing/)). To report a vulnerability, see
+[steerglass.com/security](https://steerglass.com/security/). To report a vulnerability, see
 [SECURITY.md](SECURITY.md).
 
 ## Development

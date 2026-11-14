@@ -76,7 +76,7 @@
         <tr><th>System</th><th>How it’s signed</th></tr>
         <tr><td>macOS</td><td>Signed with our Apple Developer ID (<code>Davide Bettio (79AHY83MQ9)</code>) and notarized by Apple, so Gatekeeper opens it without warnings. The Homebrew cask pins the SHA-256 of each release.</td></tr>
         <tr><td>Linux</td><td>The <code>.deb</code> and <code>.rpm</code> packages and the apt and dnf repository indexes are signed with the Steerglass repository key: <code>BF36 B823 7521 CA83 88E0 02C7 91F9 627C E6D9 1421</code> (<a href="/keys/steerglass.asc">steerglass.asc</a>).</td></tr>
-        <tr><td>Windows</td><td>The installers are <b>not code-signed yet</b>: we are setting up free code signing provided by SignPath.io, certificate by SignPath Foundation (<a href="/code-signing/">code signing policy</a>). Until then SmartScreen may show a warning the first time. Check the SHA-256 below before running them.</td></tr>
+        <tr><td>Windows</td><td>The installers are <b>not code-signed yet</b> — we’re working on it — so SmartScreen may show a warning the first time. Check the SHA-256 below before running them.</td></tr>
       </table></div>
 
       <h2>Checksums</h2>
@@ -107,7 +107,7 @@ Windows:  Get-FileHash .\steerglass-windows-setup.exe   (PowerShell)</pre>
       <p>The same contact is published in <a href="/.well-known/security.txt">/.well-known/security.txt</a>.</p>
     </article>
   </main>
-  <footer class="site"><div class="wrap"><span class="brand" style="font-size:15px"><img src="/logo.svg" width="20" height="20" alt="">Steerglass</span><span>© 2026 Steerglass</span><div class="spacer"></div><a href="/install/">Download</a><a href="https://github.com/steerglass/steerglass">GitHub</a><a href="/sponsor/">Sponsor</a><a href="/compare/">Compare</a><a href="/security/">Security</a><a href="/code-signing/">Code signing</a><a href="/privacy/">Privacy</a><a href="mailto:hello@steerglass.com">hello@steerglass.com</a></div></footer>
+  <footer class="site"><div class="wrap"><span class="brand" style="font-size:15px"><img src="/logo.svg" width="20" height="20" alt="">Steerglass</span><span>© 2026 Steerglass</span><div class="spacer"></div><a href="/install/">Download</a><a href="https://github.com/steerglass/steerglass">GitHub</a><a href="/sponsor/">Sponsor</a><a href="/compare/">Compare</a><a href="/security/">Security</a><a href="/privacy/">Privacy</a><a href="mailto:hello@steerglass.com">hello@steerglass.com</a></div></footer>
   <script src="/portal.js?v=5f2f4ae9e4"></script>
 </body>
 </html>
