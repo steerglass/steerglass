@@ -14,7 +14,9 @@
 //   releases/<version>/sha256sums.txt, download/sha256sums.txt   SHA-256 of every file, shown on /install
 // Every published file name is lowercase.
 //   apt/, rpm/               the signed Linux repositories (see linux-repos.mjs)
-//   updates/latest.json      written last, so clients never see a manifest before its files
+//   updates/next.json        the manifest of a version still missing some platforms (see REQUIRED)
+//   updates/latest.json      written last, and only once every platform in REQUIRED is published:
+//                            a manifest without a client's platform makes its update check fail
 // Then the Homebrew cask and the GitHub Release (github-release.mjs) get the new version.
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -38,9 +40,12 @@ const flag = (name) => {
   return value;
 };
 const dryRun = args.includes("--dry-run") && args.splice(args.indexOf("--dry-run"), 1);
+// Writes latest.json even with platforms missing (e.g. a fix for one platform only): their copies then
+// can't check for updates until the rest is published.
+const allowMissing = args.includes("--allow-missing") && args.splice(args.indexOf("--allow-missing"), 1);
 const notes = flag("--notes") ?? "";
 if (!args.length) {
-  console.error("usage: publish-release.mjs [--notes text] [--dry-run] <artifact dir or file>...");
+  console.error("usage: publish-release.mjs [--notes text] [--dry-run] [--allow-missing] <artifact dir or file>...");
   process.exit(1);
 }
 
@@ -73,7 +78,22 @@ function classify(file) {
   return null;
 }
 
+/** Every platform a release must have before latest.json moves to it. */
+const REQUIRED = [
+  "darwin-aarch64",
+  "darwin-x86_64",
+  "windows-x86_64",
+  "linux-x86_64",
+  "linux-x86_64-deb",
+  "linux-x86_64-rpm",
+  "linux-aarch64",
+  "linux-aarch64-deb",
+  "linux-aarch64-rpm",
+];
+
 const stage = mkdtempSync(join(tmpdir(), "steerglass-release-"));
+// One SSH connection for every transfer: some servers reset quick successive connections.
+const ssh = `ssh -o ControlMaster=auto -o ControlPath=${join(stage, "ssh.sock")} -o ControlPersist=60`;
 
 // The apt/dnf repositories; every download of an .rpm is the copy signed for the dnf repository.
 const repos = join(stage, "repos");
@@ -120,8 +140,17 @@ if (!Object.keys(platforms).length) {
   process.exit(1);
 }
 
-// Platforms can be published separately (macOS from a Mac, Windows/Linux from CI): when the live
-// manifest is for the same version, the platforms already there are kept.
+// Platforms are published separately (macOS from a Mac, Windows/Linux from CI). Until all of them are
+// there, the version's manifest is kept in updates/next.json (read from the server, not through the
+// CDN) and latest.json keeps offering the previous version to everyone.
+let next = null;
+try {
+  execFileSync("rsync", ["-e", ssh, `${REMOTE}/updates/next.json`, join(stage, "next-live.json")], { stdio: "ignore" });
+  next = JSON.parse(readFileSync(join(stage, "next-live.json"), "utf8"));
+} catch {
+  // none yet
+}
+if (next?.version !== version) next = null;
 let live = null;
 try {
   const res = await fetch(`${SITE}/updates/latest.json`, { cache: "no-store" });
@@ -135,25 +164,31 @@ if (live && cmp(live.version, version) > 0) {
   process.exit(1);
 }
 const sameVersion = live?.version === version;
+/** Platforms of this version already online, in latest.json or in next.json. */
+const earlier = { ...(sameVersion ? live.platforms : {}), ...next?.platforms };
+const firstPublish = Object.keys(earlier).length === 0;
 for (const platform of Object.keys(platforms)) {
-  if (sameVersion && live.platforms?.[platform]) {
+  if (earlier[platform]) {
     console.error(`${platform} is already published for ${version}: bump the version in src-tauri/tauri.conf.json`);
     process.exit(1);
   }
 }
 const manifest = {
   version,
-  notes: releaseNotes || (sameVersion ? live.notes : ""),
+  notes: releaseNotes || next?.notes || (sameVersion ? live.notes : ""),
   pub_date: sameVersion ? live.pub_date : new Date().toISOString(),
-  platforms: { ...(sameVersion ? live.platforms : {}), ...platforms },
+  platforms: { ...earlier, ...platforms },
 };
+const missing = REQUIRED.filter((p) => !manifest.platforms[p]);
+const complete = missing.length === 0 || allowMissing;
+const manifestName = complete ? "latest.json" : "next.json";
 // Checksums, in the format of `sha256sum -c`. The release folder is immutable, so its list is only
 // written by the first publish of a version; the list for download/ keeps the entries of the
 // platforms not rebuilt this time.
 const sha256 = (f) => createHash("sha256").update(readFileSync(f)).digest("hex");
 const sumsOf = (dir) => new Map(readdirSync(dir).filter((f) => f !== "sha256sums.txt").map((f) => [f, sha256(join(dir, f))]));
 const sumsText = (sums) => [...sums].sort(([a], [b]) => a.localeCompare(b)).map(([f, h]) => `${h}  ${f}`).join("\n") + "\n";
-if (!sameVersion) writeFileSync(join(releaseDir, "sha256sums.txt"), sumsText(sumsOf(releaseDir)));
+if (firstPublish) writeFileSync(join(releaseDir, "sha256sums.txt"), sumsText(sumsOf(releaseDir)));
 const downloadSums = new Map();
 try {
   const res = await fetch(`${SITE}/download/sha256sums.txt`, { cache: "no-store" });
@@ -165,16 +200,21 @@ for (const [f, h] of sumsOf(downloadDir)) downloadSums.set(f, h);
 writeFileSync(join(downloadDir, "sha256sums.txt"), sumsText(downloadSums));
 
 mkdirSync(join(stage, "updates"));
-writeFileSync(join(stage, "updates", "latest.json"), JSON.stringify(manifest, null, 2) + "\n");
+writeFileSync(join(stage, "updates", manifestName), JSON.stringify(manifest, null, 2) + "\n");
 
 console.log(`Steerglass ${version}`);
-console.log(`  updater: ${Object.keys(platforms).join(", ")}${sameVersion ? ` (added to ${Object.keys(live.platforms).join(", ")})` : ""}`);
+console.log(`  updater: ${Object.keys(platforms).join(", ")}${firstPublish ? "" : ` (added to ${Object.keys(earlier).join(", ")})`}`);
 console.log(`  downloads: ${downloads.join(", ") || "(none)"}`);
+console.log(
+  missing.length === 0
+    ? "  latest.json: every platform is ready, clients get this version"
+    : allowMissing
+      ? `  latest.json: written WITHOUT ${missing.join(", ")} (--allow-missing): those copies can't check for updates`
+      : `  latest.json: unchanged, still missing ${missing.join(", ")} (kept in updates/next.json)`,
+);
 console.log(`  staged in ${stage}`);
 if (dryRun) process.exit(0);
 
-// One SSH connection for every transfer: some servers reset quick successive connections.
-const ssh = `ssh -o ControlMaster=auto -o ControlPath=${join(stage, "ssh.sock")} -o ControlPersist=60`;
 // A published file is cached for a year by Cloudflare and clients: never overwrite one, bump the version.
 let existing = "";
 try {
@@ -196,8 +236,9 @@ rsync(`${stage}/releases/`, `${REMOTE}/releases/`);
 // Only the platforms built this time are replaced; the others keep their previous download.
 rsync(`${stage}/download/`, `${REMOTE}/download/`);
 uploadLinuxRepos(repos, (...a) => rsync(...a.slice(0, -1), `${REMOTE}/${a.at(-1)}`));
-rsync(`${stage}/updates/latest.json`, `${REMOTE}/updates/latest.json`);
-console.log(`Published: ${SITE}/updates/latest.json`);
+rsync(`${stage}/updates/${manifestName}`, `${REMOTE}/updates/${manifestName}`);
+if (complete) console.log(`Published: ${SITE}/updates/latest.json`);
+else console.log(`latest.json unchanged (still ${live?.version ?? "none"}): it moves to ${version} when ${missing.join(", ")} are published`);
 
 // Homebrew: `brew install --cask davidebettio/tap/steerglass`. The cask points at the immutable release
 // file, so it can only be updated once that is online. A failure here doesn't undo the release.

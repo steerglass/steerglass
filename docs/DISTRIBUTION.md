@@ -49,17 +49,24 @@ The site is a static folder on a web server (`STEERGLASS_REMOTE`):
 | `/releases/<version>/` | every file of that version | immutable |
 | `/download/` | stable names linked from the landing page (`steerglass-mac.dmg`, …; every published name is lowercase) | no-cache |
 | `/updates/latest.json` | manifest the app polls | no-cache |
+| `/updates/next.json` | manifest of a version still missing some platforms | no-cache |
 
 To release a version:
 
 1. bump `version` in `src-tauri/tauri.conf.json` (and `Cargo.toml`, `package.json`) and add an entry to
    `website/changelog.json`;
-2. macOS: `scripts/release-mac.sh --notes "What's new"` builds, signs, notarizes and publishes;
-3. Windows/Linux: push a `v<version>` tag (or run the *Release (Windows, Linux)* workflow by hand), then
-   publish its artifacts: `gh run download <run id> -D dist-ci && node scripts/publish-release.mjs dist-ci`.
-   Platforms can be published at different times for the same version: the script keeps the platforms
-   already in `latest.json` and refuses to replace a platform or a file that is already online;
-4. website: `sh scripts/deploy-site.sh`.
+2. commit, then push the `v<version>` tag: it starts the *Release (Windows, Linux)* workflow, and the
+   GitHub Release needs the tag;
+3. macOS: `scripts/release-mac.sh --notes "What's new"` builds, signs, notarizes and publishes;
+4. Windows/Linux: when the workflow is done, publish its artifacts:
+   `gh run download <run id> -D dist-ci && node scripts/publish-release.mjs dist-ci`.
+   The two publishes can come in any order. `latest.json` only moves to the new version once every
+   platform is online (the list is `REQUIRED` in `publish-release.mjs`): until then the new manifest
+   waits in `/updates/next.json` and every client keeps seeing the previous version. A manifest without
+   a client's platform would make its update check fail ("None of the fallback platforms…").
+   `--allow-missing` writes `latest.json` anyway, for a release that only fixes some platforms.
+   The script refuses to replace a platform or a file that is already online;
+5. website: `sh scripts/deploy-site.sh`.
 
 A published version is never overwritten (Cloudflare and clients cache `/releases/` for a year): to fix
 a release, publish a new version. `publish-release.mjs` refuses to publish a version that already exists.
