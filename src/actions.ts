@@ -124,6 +124,71 @@ export function actionsFor(ref: ObjRef): Action[] {
   return list;
 }
 
+const plural = (r: ObjRef, n: number) => {
+  const k = r.kind.kind.toLowerCase();
+  return n === 1 ? k : k.endsWith("s") ? `${k}es` : k.endsWith("y") ? `${k.slice(0, -1)}ies` : `${k}s`;
+};
+
+/** Names listed in a confirmation, the rest summarized. */
+function nameList(refs: ObjRef[], max = 8) {
+  const names = refs.map((r) => (r.namespace ? `${r.namespace}/${r.name}` : r.name));
+  return names.length > max ? `${names.slice(0, max).join(", ")} and ${names.length - max} more` : names.join(", ");
+}
+
+/** Actions on several selected rows (all of the same kind): delete and copy names. */
+export function actionsForMany(refs: ObjRef[]): Action[] {
+  if (refs.length === 0) return [];
+  const n = refs.length;
+  const what = `${n} ${plural(refs[0], n)}`;
+  const list: Action[] = [
+    {
+      id: "copy",
+      label: `Copy ${n} names`,
+      shortcut: "C",
+      run: () => {
+        navigator.clipboard.writeText(refs.map((r) => r.name).join("\n"));
+        st().toast(`Copied ${n} names`);
+      },
+    },
+  ];
+  const { kind } = refs[0];
+  if (!kind.verbs || kind.verbs.length === 0 || kind.verbs.includes("delete")) {
+    list.push({ id: "delete", label: `Delete ${what}`, shortcut: "⌫", danger: true, run: () => deleteMany(refs) });
+  }
+  return list;
+}
+
+/** Deletes several objects after one confirmation. On production contexts the user types "delete N",
+ * like typing the name for a single object. */
+function deleteMany(refs: ObjRef[]) {
+  const n = refs.length;
+  const what = `${n} ${plural(refs[0], n)}`;
+  const contexts = [...new Set(refs.map((r) => r.context))];
+  const prodCtx = contexts.find(isProdLike);
+  st().ask({
+    title: `Delete ${what}?`,
+    body: `${nameList(refs)}. Context: ${contexts.join(", ")}. This cannot be undone.`,
+    confirmLabel: `Delete ${n}`,
+    danger: true,
+    typeToConfirm: prodCtx ? `delete ${n}` : undefined,
+    prod: prodCtx,
+    onConfirm: async () => {
+      const results = await Promise.allSettled(refs.map((r) => api.deleteObject(r)));
+      const failed = results.filter((r): r is PromiseRejectedResult => r.status === "rejected");
+      if (failed.length === 0) st().toast(`Deleted ${what}`, "success");
+      else st().toast(`Deleted ${n - failed.length} of ${n}. ${errText(failed[0].reason)}`, "error");
+    },
+  });
+}
+
+export function runShortcutMany(refs: ObjRef[], key: string): boolean {
+  const map: Record<string, string> = { c: "copy", Delete: "delete", Backspace: "delete" };
+  const a = actionsForMany(refs).find((x) => x.id === map[key]);
+  if (!a) return false;
+  a.run();
+  return true;
+}
+
 /** Destructive actions always ask. With `typeName`, production contexts also require typing the object's name,
  * even when confirmations for production are turned off. */
 function confirmIfNeeded(ref: ObjRef, title: string, body: string, confirmLabel: string, danger: boolean, typeName: boolean, run: () => Promise<void>) {

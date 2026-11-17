@@ -4,9 +4,9 @@ import { AlertTriangle, ChevronDown, ChevronUp, Loader2, Search, X } from "lucid
 import { useStore } from "../store";
 import { useWatch, type CtxRow } from "../useWatch";
 import { kindLabel } from "../kinds";
-import { actionsFor, runShortcut, type Action } from "../actions";
+import { actionsFor, actionsForMany, runShortcut, runShortcutMany, type Action } from "../actions";
 import { NamespacePicker } from "./NamespacePicker";
-import { age, fuzzy, modKey, shortContext, typingIn, useNow } from "../util";
+import { age, fuzzy, isMac, modKey, modName, shortContext, typingIn, useNow } from "../util";
 import type { Health, ObjRef } from "../api";
 import { resolveEnv, strictestEnv } from "../env";
 import { EnvTag } from "./EnvTag";
@@ -93,6 +93,14 @@ export function ResourceTable() {
   const now = useNow(5000);
   const [sort, setSort] = useState<SortKey>({ col: "Name", dir: 1 });
   const [menu, setMenu] = useState<{ x: number; y: number; actions: Action[] } | null>(null);
+  /** Rows picked with ⇧/⌘-click or ⇧↑↓, by key; empty when a single row is selected. */
+  const [marked, setMarked] = useState<ReadonlySet<string>>(NO_MARKS);
+  /** Where a ⇧ range starts: the last row clicked or moved to without ⇧. */
+  const [anchor, setAnchor] = useState<string | null>(null);
+  useEffect(() => {
+    setMarked(NO_MARKS);
+    setAnchor(null);
+  }, [contexts, kind, namespace]);
   const filterRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -160,15 +168,74 @@ export function ResourceTable() {
   const refOf = useCallback((r: CtxRow): ObjRef => ({ context: r.context, kind, namespace: r.namespace, name: r.name }), [kind]);
   const selectedIdx = useMemo(() => visible.findIndex((r) => r.key === selected), [visible, selected]);
 
+  // Deleted objects leave the selection: a pod recreated with the same name (statefulsets) is not picked again.
+  useEffect(() => {
+    if (marked.size === 0) return;
+    const keys = new Set(rows.map((r) => r.key));
+    if ([...marked].some((k) => !keys.has(k))) setMarked(new Set([...marked].filter((k) => keys.has(k))));
+  }, [rows, marked]);
+
+  /** The rows several actions apply to: only those still visible (the filter can hide picked rows). */
+  const markedRows = useMemo(() => (marked.size ? visible.filter((r) => marked.has(r.key)) : []), [visible, marked]);
+  const many = markedRows.length > 1 ? markedRows.map(refOf) : null;
+
+  const markRange = useCallback(
+    (from: number, to: number) => {
+      const [a, b] = from < to ? [from, to] : [to, from];
+      setMarked(new Set(visible.slice(a, b + 1).map((r) => r.key)));
+    },
+    [visible],
+  );
+  const clearMarks = useCallback(() => setMarked((m) => (m.size ? NO_MARKS : m)), []);
+
   const moveSelection = useCallback(
-    (delta: number) => {
+    (delta: number, extend = false) => {
       if (!visible.length) return;
       const next = Math.max(0, Math.min(visible.length - 1, (selectedIdx < 0 ? -1 : selectedIdx) + delta));
+      if (extend) {
+        const anchorIdx = visible.findIndex((r) => r.key === anchor);
+        const from = anchorIdx >= 0 ? anchorIdx : selectedIdx >= 0 ? selectedIdx : next;
+        if (anchorIdx < 0) setAnchor(visible[from].key);
+        markRange(from, next);
+      } else {
+        clearMarks();
+        setAnchor(visible[next].key);
+      }
       select(visible[next].key, refOf(visible[next]));
       virt.scrollToIndex(next, { align: "auto" });
     },
-    [visible, selectedIdx, select, virt, refOf],
+    [visible, selectedIdx, select, virt, refOf, anchor, markRange, clearMarks],
   );
+
+  /** Click: one row. ⇧-click: the range from the anchor. ⌘/Ctrl-click: adds or removes a row. */
+  const clickRow = useCallback(
+    (row: CtxRow, shift: boolean, mod: boolean) => {
+      const idx = visible.indexOf(row);
+      if (shift && idx >= 0) {
+        const anchorIdx = visible.findIndex((r) => r.key === anchor);
+        const from = anchorIdx >= 0 ? anchorIdx : selectedIdx >= 0 ? selectedIdx : idx;
+        if (anchorIdx < 0) setAnchor(visible[from].key);
+        markRange(from, idx);
+      } else if (mod) {
+        setMarked((m) => {
+          const next = new Set(m.size ? m : selected ? [selected] : []);
+          if (next.has(row.key)) next.delete(row.key);
+          else next.add(row.key);
+          return next;
+        });
+        setAnchor(row.key);
+      } else {
+        clearMarks();
+        setAnchor(row.key);
+      }
+      select(row.key, refOf(row));
+    },
+    [visible, anchor, selectedIdx, selected, markRange, clearMarks, select, refOf],
+  );
+  // Stable for the memoized rows: they call the latest handler.
+  const clickRef = useRef(clickRow);
+  clickRef.current = clickRow;
+  const onRowClick = useCallback((row: CtxRow, shift: boolean, mod: boolean) => clickRef.current(row, shift, mod), []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -191,37 +258,50 @@ export function ResourceTable() {
         }
         return;
       }
+      // ⌘A / Ctrl+A: every visible row.
+      // Not from the detail panel, where it selects the text of logs, events and the like.
+      const inDetail = !!(e.target as HTMLElement | null)?.closest?.(".detail");
+      if ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === "a" && !typingIn(e) && !inDetail && visible.length) {
+        e.preventDefault();
+        if (selectedIdx < 0) select(visible[0].key, refOf(visible[0]));
+        setMarked(new Set(visible.map((r) => r.key)));
+        return;
+      }
       if (typingIn(e) || e.metaKey || e.ctrlKey || e.altKey) return;
       const row = selectedIdx >= 0 ? visible[selectedIdx] : null;
+      const ext = e.shiftKey;
       if (e.key === "ArrowDown" || e.key === "j") {
         e.preventDefault();
-        moveSelection(1);
+        moveSelection(1, ext);
       } else if (e.key === "ArrowUp" || e.key === "k") {
         e.preventDefault();
-        moveSelection(-1);
+        moveSelection(-1, ext);
       } else if (e.key === "PageDown") {
         e.preventDefault();
-        moveSelection(20);
+        moveSelection(20, ext);
       } else if (e.key === "PageUp") {
         e.preventDefault();
-        moveSelection(-20);
+        moveSelection(-20, ext);
       } else if (e.key === "Home" || e.key === "g") {
-        moveSelection(-visible.length);
+        moveSelection(-visible.length, e.key === "Home" && ext);
       } else if (e.key === "End" || e.key === "G") {
-        moveSelection(visible.length);
+        moveSelection(visible.length, e.key === "End" && ext);
       } else if (e.key === "Enter" && row) {
         openDetail(refOf(row));
       } else if (e.key === "Escape") {
         if (useStore.getState().detail) useStore.getState().closeDetail();
+        else if (marked.size) clearMarks();
         else if (filter) setFilter("");
         else select(null);
+      } else if (many && runShortcutMany(many, e.key)) {
+        e.preventDefault();
       } else if (row && runShortcut(refOf(row), e.key)) {
         e.preventDefault();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [visible, selectedIdx, moveSelection, filter, setFilter, select, openDetail, refOf]);
+  }, [visible, selectedIdx, moveSelection, filter, setFilter, select, openDetail, refOf, marked, many, clearMarks]);
 
   useEffect(() => {
     if (!menu) return;
@@ -368,11 +448,19 @@ export function ResourceTable() {
                   top={v.start}
                   height={rowH}
                   selected={r.key === selected}
+                  marked={many !== null && marked.has(r.key)}
                   usage={usageOf(r)}
                   node={nodeOf(r)}
-                  onSelect={(row) => select(row.key, refOf(row))}
+                  onSelect={onRowClick}
                   onOpen={(row) => openDetail(refOf(row))}
                   onMenu={(row, x, y) => {
+                    // Right-click on a picked row acts on all of them; elsewhere it picks just that row.
+                    if (many && marked.has(row.key)) {
+                      setMenu({ x, y, actions: [...actionsForMany(many), { id: "clear", label: "Clear selection", shortcut: "Esc", run: clearMarks }] });
+                      return;
+                    }
+                    clearMarks();
+                    setAnchor(row.key);
                     select(row.key, refOf(row));
                     setMenu({ x, y, actions: actionsFor(refOf(row)) });
                   }}
@@ -382,7 +470,20 @@ export function ResourceTable() {
           </div>
         </div>
       </div>
-      {!detailOpen && (
+      {many ? (
+        <footer className="hint selbar">
+          <b>{many.length} selected</b>
+          {actionsForMany(many).map((a) => (
+            <button key={a.id} className={`btn small ${a.danger ? "danger" : ""}`} onClick={a.run}>
+              {a.label}
+              {a.shortcut && <kbd>{a.shortcut}</kbd>}
+            </button>
+          ))}
+          <button className="btn small" onClick={clearMarks}>
+            Clear <kbd>Esc</kbd>
+          </button>
+        </footer>
+      ) : !detailOpen && (
         <footer className="hint">
           <span>↑↓ navigate</span>
           <span>↵ details</span>
@@ -394,6 +495,7 @@ export function ResourceTable() {
           )}
           <span>E yaml</span>
           <span>⌫ delete</span>
+          <span>⇧↑↓ / {modName}-click multi-select</span>
           <span>{modKey}K commands</span>
           <span>? help</span>
         </footer>
@@ -451,6 +553,8 @@ function Cell({ header, value, row, now }: { header: string; value: string; row:
   return <>{value}</>;
 }
 
+const NO_MARKS: ReadonlySet<string> = new Set();
+
 interface TableRowProps {
   row: CtxRow;
   headers: string[];
@@ -459,21 +563,25 @@ interface TableRowProps {
   top: number;
   height: number;
   selected: boolean;
+  /** Part of a multi-row selection. */
+  marked: boolean;
   usage?: PodUsage;
   node?: NodeUsage;
-  onSelect: (r: CtxRow) => void;
+  onSelect: (r: CtxRow, shift: boolean, mod: boolean) => void;
   onOpen: (r: CtxRow) => void;
   onMenu: (r: CtxRow, x: number, y: number) => void;
 }
 
 /** Memoized: a live update re-renders only the rows that changed, moved or got selected. */
 const TableRow = memo(
-  function TableRow({ row: r, headers, colIndex, now, top, height, selected, usage, node, onSelect, onOpen, onMenu }: TableRowProps) {
+  function TableRow({ row: r, headers, colIndex, now, top, height, selected, marked, usage, node, onSelect, onOpen, onMenu }: TableRowProps) {
     return (
       <div
-        className={`tr h-${r.health} ${selected ? "selected" : ""}`}
+        className={`tr h-${r.health} ${selected ? "selected" : ""} ${marked ? "marked" : ""}`}
         style={{ transform: `translateY(${top}px)`, height }}
-        onClick={() => onSelect(r)}
+        // ⇧-click would otherwise select the text between the two rows.
+        onMouseDown={(e) => e.shiftKey && e.preventDefault()}
+        onClick={(e) => onSelect(r, e.shiftKey, isMac ? e.metaKey : e.ctrlKey)}
         onDoubleClick={() => onOpen(r)}
         onContextMenu={(e) => {
           e.preventDefault();
@@ -508,6 +616,7 @@ const TableRow = memo(
     a.top === b.top &&
     a.height === b.height &&
     a.selected === b.selected &&
+    a.marked === b.marked &&
     a.usage === b.usage &&
     a.node === b.node &&
     (a.now === b.now || !a.headers.includes("Age")),

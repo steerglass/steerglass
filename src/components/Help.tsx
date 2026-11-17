@@ -29,7 +29,10 @@ const SECTIONS: { title: string; rows: Row[] }[] = [
       [["PgUp PgDn"], "Move by 20 rows"],
       [["g", "G"], "First / last row"],
       [["↵", "double-click"], "Open details"],
-      [["right-click"], "All actions for the row"],
+      [["right-click"], "All actions for the row (or for all selected rows)"],
+      [["⇧↑ ⇧↓", "⇧-click"], "Select a range of rows"],
+      [[`${modName}-click`], "Add or remove a row from the selection"],
+      [[`${modKey}A`], "Select every row shown (the filter applies)"],
     ],
   },
   {
@@ -41,7 +44,7 @@ const SECTIONS: { title: string; rows: Row[] }[] = [
       [["R"], "Rollout restart (deployments, statefulsets, daemonsets)"],
       [["C"], "Copy name"],
       [["A"], "Explain with AI (when turned on in Settings → AI)"],
-      [["⌫", "Delete"], "Delete (asks for confirmation)"],
+      [["⌫", "Delete"], "Delete (asks for confirmation); with several rows selected, deletes them all"],
     ],
   },
   {
