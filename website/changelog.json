@@ -1,5 +1,17 @@
 [
   {
+    "version": "0.5.0",
+    "date": "2026-11-18",
+    "title": "Needs attention sees more, and a full health scan",
+    "items": [
+      "Needs attention now also lists workloads with no replica ready, claims stuck Pending, load balancers with no external IP, autoscalers that can't scale, Gateways and HTTPRoutes that weren't accepted, and ingresses whose IngressClass or backend Service doesn't exist or that never got an address.",
+      "Recent Warning events (the last 15 minutes) show up for any kind of object, one line per object with how many times it happened, so problems that only a controller reports, like a rejected ingress, aren't missed.",
+      "Scan all resources checks every resource kind the cluster serves, custom resources included, by their status conditions: Ready, Available, Accepted or Programmed that are False, Stalled or Degraded that are True. Persistent volumes, namespaces, quotas and API services are checked too.",
+      "Each line shows the object's kind, chips filter the list by kind, and \"Show more\" expands it past the first 30. A click opens any object, custom resources included.",
+      "Tables of custom resources read the same conditions, so a resource whose Programmed or ResolvedRefs condition is False now shows as failing."
+    ]
+  },
+  {
     "version": "0.4.1",
     "date": "2026-11-17",
     "title": "Select many rows, act on all of them",
