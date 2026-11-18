@@ -166,13 +166,24 @@ export interface NodeUsageReport {
   top: { namespace: string; name: string; cpu: number; mem: number }[];
 }
 
-/** Something that needs attention in a cluster (see `cluster_issues`). */
+/** Something that needs attention in a cluster (see `health.rs`). */
 export interface Issue {
-  kind: "Pod" | "Node" | "Job";
+  group: string;
+  kind: string;
   namespace?: string;
   name: string;
   reason: string;
   since?: string;
+  severity: "error" | "warn";
+}
+
+/** A full health scan of a cluster: every resource kind, custom resources included. */
+export interface Scan {
+  items: Issue[];
+  /** How many resource kinds were checked. */
+  kinds: number;
+  /** Kinds that couldn't be read, as `Kind.group`. */
+  skipped: string[];
 }
 
 export interface ClusterSummary {
@@ -227,6 +238,7 @@ export const api = {
   environment: () => invoke<{ sandboxed: boolean; kubeDir?: string }>("environment"),
   clusterSummary: (context: string) => invoke<ClusterSummary>("cluster_summary", { context }),
   clusterIssues: (context: string) => invoke<Issue[]>("cluster_issues", { context }),
+  clusterScan: (context: string) => invoke<Scan>("cluster_scan", { context }),
   podUsage: (context: string, namespace?: string) => invoke<PodUsageReport>("pod_usage", { context, namespace }),
   podHistory: (context: string, namespace: string, name: string, seconds: number) =>
     invoke<PodHistory>("pod_history", { context, namespace, name, seconds }),

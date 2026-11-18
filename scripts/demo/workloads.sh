@@ -145,8 +145,48 @@ YAML
   data) # many small batch pods
     worker spark-executor monitoring "partition done"
     k -n monitoring scale deployment spark-executor --replicas=48 >/dev/null ;;
-  staging) # a bad image tag
-    k -n shop set image deployment/catalog catalog=nginx:1.27-alpine-typo >/dev/null ;;
+  staging) # a bad image tag, two broken ingresses, a certificate that isn't ready (custom resource)
+    k -n shop set image deployment/catalog catalog=nginx:1.27-alpine-typo >/dev/null
+    cat <<YAML | k apply -f - >/dev/null
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata: { name: storefront, namespace: shop }
+spec:
+  ingressClassName: nginx
+  rules: [{ host: staging.shop.example, http: { paths: [{ path: /, pathType: Prefix, backend: { service: { name: storefront, port: { number: 80 } } } }] } }]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata: { name: checkout, namespace: shop }
+spec:
+  rules: [{ host: checkout.staging.shop.example, http: { paths: [{ path: /, pathType: Prefix, backend: { service: { name: checkout-v2, port: { number: 8080 } } } }] } }]
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata: { name: certificates.tls.example.com }
+spec:
+  group: tls.example.com
+  scope: Namespaced
+  names: { kind: Certificate, plural: certificates, singular: certificate }
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      subresources: { status: {} }
+      schema: { openAPIV3Schema: { type: object, x-kubernetes-preserve-unknown-fields: true } }
+YAML
+    k wait --for=condition=Established crd/certificates.tls.example.com >/dev/null
+    for c in shop-staging checkout-staging; do
+      cat <<YAML | k apply -f - >/dev/null
+apiVersion: tls.example.com/v1
+kind: Certificate
+metadata: { name: $c, namespace: shop }
+spec: { dnsNames: [ "$c.shop.example" ], issuer: letsencrypt-staging }
+YAML
+    done
+    now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    k -n shop patch certificate shop-staging --subresource=status --type=merge -p "{\"status\":{\"conditions\":[{\"type\":\"Ready\",\"status\":\"True\",\"reason\":\"Issued\",\"lastTransitionTime\":\"$now\"}]}}" >/dev/null
+    k -n shop patch certificate checkout-staging --subresource=status --type=merge -p "{\"status\":{\"conditions\":[{\"type\":\"Ready\",\"status\":\"False\",\"reason\":\"DNSChallengeFailed\",\"message\":\"no TXT record for _acme-challenge.checkout-staging.shop.example\",\"lastTransitionTime\":\"$now\"}]}}" >/dev/null ;;
   dev) # a service built on a distroless image: no shell inside, for the debug container
     k -n shop scale deployment storefront --replicas=1 >/dev/null
     cat <<YAML | k apply -f - >/dev/null

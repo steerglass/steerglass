@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { api, errText, type ClusterSummary, type ForwardInfo, type Issue, type KindRef, type LoadReport, type ObjRef, type PodUsage } from "./api";
+import { api, errText, type ClusterSummary, type ForwardInfo, type Issue, type KindRef, type Scan, type LoadReport, type ObjRef, type PodUsage } from "./api";
 import { PODS } from "./kinds";
 import { resolveEnv, type Env, type EnvChoice } from "./env";
 import type { Theme } from "./theme";
@@ -47,6 +47,8 @@ export interface Usage {
 
 /** Problems found in a cluster, with when they were last checked. */
 export type Issues = { items: Issue[]; at: number } | { error: string; at: number };
+/** A full health scan of a cluster, running or done. */
+export type Scans = { running: true; at: number } | (Scan & { at: number }) | { error: string; at: number };
 
 interface Persisted {
   contexts: string[];
@@ -89,6 +91,7 @@ interface State extends Persisted {
   detail: Detail | null;
   probes: Record<string, Probe>;
   issues: Record<string, Issues>;
+  scans: Record<string, Scans>;
   usage: Record<string, Usage>;
   /** Active port-forwards, kept in sync with the backend's "forwards" event. */
   forwards: ForwardInfo[];
@@ -115,6 +118,8 @@ interface State extends Persisted {
   /** Probes every context; with `onlyMissing`, skips those already probed or in flight. */
   probeAll: (onlyMissing?: boolean) => Promise<void>;
   loadIssues: (ctx: string) => Promise<void>;
+  /** Full health scans (every resource kind) of these clusters, a few at a time. */
+  scanClusters: (ctxs: string[]) => Promise<void>;
   /** Samples the pods' CPU and memory (this also feeds the history behind the charts). */
   sampleUsage: (ctx: string) => Promise<void>;
   loadForwards: () => Promise<void>;
@@ -166,6 +171,7 @@ export const useStore = create<State>((set, get) => ({
   detail: null,
   probes: {},
   issues: {},
+  scans: {},
   usage: {},
   forwards: [],
   discovered: {},
@@ -239,6 +245,23 @@ export const useStore = create<State>((set, get) => ({
     } catch (e) {
       set((s) => ({ issues: { ...s.issues, [ctx]: { error: errText(e), at: Date.now() } } }));
     }
+  },
+
+  async scanClusters(ctxs) {
+    const put = (ctx: string, v: Scans) => set((s) => ({ scans: { ...s.scans, [ctx]: v } }));
+    for (const c of ctxs) put(c, { running: true, at: Date.now() });
+    const queue = [...ctxs];
+    const worker = async () => {
+      while (queue.length) {
+        const ctx = queue.shift()!;
+        try {
+          put(ctx, { ...(await api.clusterScan(ctx)), at: Date.now() });
+        } catch (e) {
+          put(ctx, { error: errText(e), at: Date.now() });
+        }
+      }
+    };
+    await Promise.all(Array.from({ length: 3 }, worker));
   },
 
   async loadForwards() {

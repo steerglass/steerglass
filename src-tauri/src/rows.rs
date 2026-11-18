@@ -64,11 +64,11 @@ pub fn columns(group: &str, kind: &str) -> Vec<&'static str> {
     }
 }
 
-fn s(v: &Value, path: &[&str]) -> String {
+pub(crate) fn s(v: &Value, path: &[&str]) -> String {
     get(v, path).map(value_str).unwrap_or_default()
 }
 
-fn get<'a>(v: &'a Value, path: &[&str]) -> Option<&'a Value> {
+pub(crate) fn get<'a>(v: &'a Value, path: &[&str]) -> Option<&'a Value> {
     let mut cur = v;
     for p in path {
         cur = cur.get(*p)?;
@@ -88,7 +88,7 @@ fn i(v: &Value, path: &[&str]) -> i64 {
     get(v, path).and_then(|x| x.as_i64()).unwrap_or(0)
 }
 
-fn arr<'a>(v: &'a Value, path: &[&str]) -> &'a [Value] {
+pub(crate) fn arr<'a>(v: &'a Value, path: &[&str]) -> &'a [Value] {
     get(v, path).and_then(|x| x.as_array()).map(|a| a.as_slice()).unwrap_or(&[])
 }
 
@@ -660,18 +660,55 @@ fn access_modes(modes: &[Value]) -> String {
         .join(",")
 }
 
-/// For CRDs and other kinds: derive a status from the common `Ready` condition or `status.phase`.
+/// Conditions that mean "working" when True, in the order their name is shown.
+const GOOD_CONDITIONS: [&str; 7] = ["Ready", "Available", "Accepted", "Programmed", "ResolvedRefs", "Synced", "Healthy"];
+/// Conditions that mean "broken" when True (`Stalled` is the kstatus convention, used by Flux and kpt).
+const BAD_CONDITIONS: [&str; 3] = ["Stalled", "Degraded", "Failed"];
+
+/// The health a list of conditions gives, kstatus-style: any bad condition that is True, or good one
+/// that is False, is an error; Unknown is a warning; otherwise the first good condition found.
+fn conditions_status(conds: &[Value]) -> Option<(String, Health)> {
+    let find = |ty: &str| conds.iter().find(|c| c.get("type").and_then(|t| t.as_str()) == Some(ty));
+    let label = |c: &Value, fallback: String| {
+        let r = s(c, &["reason"]);
+        if r.is_empty() { fallback } else { r }
+    };
+    for ty in BAD_CONDITIONS {
+        if let Some(c) = find(ty).filter(|c| s(c, &["status"]) == "True") {
+            return Some((label(c, ty.to_string()), Health::Error));
+        }
+    }
+    let mut first_ok = None;
+    let mut unknown = None;
+    for ty in GOOD_CONDITIONS {
+        let Some(c) = find(ty) else { continue };
+        match s(c, &["status"]).as_str() {
+            "False" => return Some((label(c, format!("Not{ty}")), Health::Error)),
+            "True" => first_ok = first_ok.or(Some(ty)),
+            _ => unknown = unknown.or(Some((label(c, format!("{ty}Unknown")), Health::Warn))),
+        }
+    }
+    unknown.or(first_ok.map(|ty| (ty.to_string(), Health::Ok)))
+}
+
+/// For CRDs and other kinds: derive a status from the common conditions or `status.phase`.
 fn generic_status(o: &Value) -> (Vec<String>, Health) {
-    for ty in ["Ready", "Available", "Synced", "Healthy"] {
-        if let Some(c) = condition(o, ty) {
-            let st = s(c, &["status"]);
-            let reason = s(c, &["reason"]);
-            let h = match st.as_str() {
-                "True" => Health::Ok,
-                "False" => Health::Error,
-                _ => Health::Warn,
-            };
-            let label = if st == "True" { ty.to_string() } else if reason.is_empty() { format!("Not{ty}") } else { reason };
+    if let Some((label, h)) = conditions_status(arr(o, &["status", "conditions"])) {
+        return (vec![label], h);
+    }
+    // Gateway API routes report their conditions once per parent Gateway.
+    let parents = arr(o, &["status", "parents"]);
+    if !parents.is_empty() {
+        let mut worst: Option<(String, Health)> = None;
+        for p in parents {
+            if let Some((label, h)) = conditions_status(arr(p, &["conditions"])) {
+                let rank = |h: Health| match h { Health::Error => 2, Health::Warn => 1, _ => 0 };
+                if worst.as_ref().is_none_or(|w| rank(h) > rank(w.1)) {
+                    worst = Some((label, h));
+                }
+            }
+        }
+        if let Some((label, h)) = worst {
             return (vec![label], h);
         }
     }
@@ -801,6 +838,25 @@ fn pod_health(reason: &str, ready: i64, total: i64) -> Health {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn generic_conditions() {
+        let gw = json!({"metadata": {"name": "g"}, "status": {"conditions": [
+            {"type": "Accepted", "status": "True"},
+            {"type": "Programmed", "status": "False", "reason": "AddressNotAssigned"}
+        ]}});
+        assert_eq!(generic_status(&gw), (vec!["AddressNotAssigned".to_string()], Health::Error));
+        let ok = json!({"status": {"conditions": [{"type": "Ready", "status": "True"}]}});
+        assert_eq!(generic_status(&ok), (vec!["Ready".to_string()], Health::Ok));
+        let stalled = json!({"status": {"conditions": [
+            {"type": "Ready", "status": "True"}, {"type": "Stalled", "status": "True", "reason": "BuildFailed"}
+        ]}});
+        assert_eq!(generic_status(&stalled).1, Health::Error);
+        let route = json!({"status": {"parents": [
+            {"conditions": [{"type": "Accepted", "status": "True"}, {"type": "ResolvedRefs", "status": "False", "reason": "BackendNotFound"}]}
+        ]}});
+        assert_eq!(generic_status(&route), (vec!["BackendNotFound".to_string()], Health::Error));
+    }
 
     #[test]
     fn pod_crashloop() {

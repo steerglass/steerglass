@@ -130,54 +130,25 @@ async fn node_counts(client: &Client) -> Result<(usize, usize)> {
     Ok((rows.len(), ready))
 }
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Issue {
-    pub kind: &'static str,
-    pub namespace: Option<String>,
-    pub name: String,
-    pub reason: String,
-    /// When the problem started, as far as it is known (last restart, creation).
-    pub since: Option<String>,
-}
-
-const MAX_ISSUES: usize = 50;
-
-/// What needs attention in a cluster: failing pods, nodes that aren't ready, failed jobs.
-/// Kinds the user can't list are skipped; the call fails only when none can be read.
+/// What needs attention in a cluster (see [`crate::health::quick`]).
 #[tauri::command]
-pub async fn cluster_issues(state: State<'_, AppState>, context: String) -> Result<Vec<Issue>> {
+pub async fn cluster_issues(state: State<'_, AppState>, context: String) -> Result<Vec<crate::health::Issue>> {
     let fut = async {
         let client = state.client(&context).await?;
-        let (pods, nodes, jobs) = tokio::join!(
-            crate::table::list_rows(&client, "/api/v1/pods", "", "Pod"),
-            crate::table::list_rows(&client, "/api/v1/nodes", "", "Node"),
-            crate::table::list_rows(&client, "/apis/batch/v1/jobs", "batch", "Job"),
-        );
-        if let (Err(e), Err(_), Err(_)) = (&pods, &nodes, &jobs) {
-            return Err(Error::msg(e.clone()));
-        }
-        let failing = |rows: std::result::Result<Vec<crate::rows::Row>, String>| {
-            rows.unwrap_or_default().into_iter().filter(|r| r.health == crate::rows::Health::Error)
-        };
-        let mut issues: Vec<Issue> = Vec::new();
-        for r in failing(pods) {
-            issues.push(Issue { kind: "Pod", reason: r.cells.get(1).cloned().unwrap_or_default(), since: r.last_restart.or(r.created), namespace: r.namespace, name: r.name });
-        }
-        for r in failing(nodes) {
-            issues.push(Issue { kind: "Node", reason: r.cells.first().cloned().unwrap_or_default(), since: None, namespace: None, name: r.name });
-        }
-        for r in failing(jobs) {
-            issues.push(Issue { kind: "Job", reason: r.cells.get(1).cloned().unwrap_or_default(), since: r.created, namespace: r.namespace, name: r.name });
-        }
-        // Nodes first (they affect everything on them), then the most recent problems.
-        issues.sort_by(|a, b| (a.kind != "Node").cmp(&(b.kind != "Node")).then_with(|| b.since.cmp(&a.since)));
-        issues.truncate(MAX_ISSUES);
-        Ok(issues)
+        crate::health::quick(&client).await
     };
     match tokio::time::timeout(Duration::from_secs(30), fut).await {
         Ok(r) => r,
         Err(_) => Err(Error::msg("timed out")),
+    }
+}
+
+/// Every resource kind checked for problems, custom resources included (see [`crate::health::scan`]).
+#[tauri::command]
+pub async fn cluster_scan(state: State<'_, AppState>, context: String) -> Result<crate::health::Scan> {
+    match tokio::time::timeout(Duration::from_secs(120), crate::health::scan(&state, &context)).await {
+        Ok(r) => r,
+        Err(_) => Err(Error::msg("the scan timed out")),
     }
 }
 

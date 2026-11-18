@@ -1797,8 +1797,47 @@ kbd.ctx-key {
 .dot.warn {
   background: var(--warn);
 }
+.attention-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.attention-scan {
+  margin-left: auto;
+  font-size: 12px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.attention-kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.attention-kind {
+  display: inline-block;
+  margin-right: 8px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--bg-3);
+  color: var(--text-3);
+  font-size: 11px;
+  line-height: 18px;
+  vertical-align: 1px;
+}
+.attention-where {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.attention-empty {
+  padding: 12px 16px;
+  font-size: 12.5px;
+}
 .attention h2 {
-  margin: 0 0 8px;
+  margin: 0;
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
@@ -1859,10 +1898,20 @@ kbd.ctx-key {
   margin-left: auto;
   font-variant-numeric: tabular-nums;
 }
-.attention-more {
+.attention-list .attention-more {
+  display: block;
+  width: 100%;
   padding: 8px 16px;
+  border: 0;
   border-top: 1px solid var(--border);
+  background: none;
+  text-align: left;
   font-size: 12px;
+  color: var(--accent-text);
+  cursor: pointer;
+}
+.attention-list .attention-more:hover {
+  background: var(--bg-hover);
 }
 
 /* ------------------------------------------------------------ usage cells */

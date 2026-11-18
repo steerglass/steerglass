@@ -1,10 +1,10 @@
-import { useEffect, useMemo } from "react";
-import { RefreshCw, Sparkles, Star } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { RefreshCw, ScanSearch, Sparkles, Star } from "lucide-react";
 import { orderedContexts, shortcutContexts, useStore } from "../store";
 import { age, modKey, shortContext, useNow } from "../util";
 import { BUILTIN } from "../kinds";
 import { resolveEnv } from "../env";
-import type { Issue } from "../api";
+import { api, type Issue } from "../api";
 import { GrantKubeDirButton } from "./Dialogs";
 import { EnvTag } from "./EnvTag";
 import { aiBlocked, explain, useAi } from "../ai";
@@ -12,11 +12,10 @@ import { aiBlocked, explain, useAi } from "../ai";
 const ISSUES_EVERY_MS = 60_000;
 const MAX_LISTED = 30;
 
-const groupOf = (kind: Issue["kind"]) => (kind === "Job" ? "batch" : "");
-
 /** Opens the resource view on the object an issue is about, with its details. */
 async function openIssue(context: string, issue: Issue, withAi = false) {
-  const kind = BUILTIN.find((b) => b.ref.group === groupOf(issue.kind) && b.ref.kind === issue.kind)?.ref;
+  const same = (k: { group: string; kind: string }) => k.group === issue.group && k.kind === issue.kind;
+  const kind = BUILTIN.find((b) => same(b.ref))?.ref ?? (await api.discover(context).catch(() => [])).find(same);
   if (!kind) return;
   const s = useStore.getState();
   await s.openResources([context], kind, issue.namespace ?? "");
@@ -26,13 +25,16 @@ async function openIssue(context: string, issue: Issue, withAi = false) {
   else s.openDetail(ref);
 }
 
+const issueKey = (context: string, i: Issue) => `${context}|${i.group}|${i.kind}|${i.namespace ?? ""}|${i.name}`;
+
 export function Overview() {
   const report = useStore((s) => s.report);
   const probes = useStore((s) => s.probes);
   const issues = useStore((s) => s.issues);
+  const scans = useStore((s) => s.scans);
   const favorites = useStore((s) => s.favorites);
   const envs = useStore((s) => s.envs);
-  const { probeAll, probe, openResources, loadIssues } = useStore.getState();
+  const { probeAll, probe, openResources, loadIssues, scanClusters } = useStore.getState();
   const now = useNow(5000);
   const aiOn = useAi((s) => !!s.settings?.enabled);
 
@@ -66,15 +68,54 @@ export function Overview() {
     return { ok, err, nodes, pods };
   }, [probes]);
 
+  // The quick checks (kept current) first, then what the last full scan added.
   const attention = useMemo(() => {
     const list: { context: string; issue: Issue }[] = [];
+    const seen = new Set<string>();
     for (const c of contexts) {
+      if (probes[c.name]?.state !== "ok") continue;
       const found = issues[c.name];
-      if (found && "items" in found && probes[c.name]?.state === "ok") found.items.forEach((issue) => list.push({ context: c.name, issue }));
+      const scan = scans[c.name];
+      for (const issue of [...(found && "items" in found ? found.items : []), ...(scan && "items" in scan ? scan.items : [])]) {
+        const key = issueKey(c.name, issue);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        list.push({ context: c.name, issue });
+      }
     }
     return list;
-  }, [contexts, issues, probes]);
-  const troubled = new Set(attention.map((a) => a.context));
+  }, [contexts, issues, scans, probes]);
+  const perContext = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const a of attention) m.set(a.context, (m.get(a.context) ?? 0) + 1);
+    return m;
+  }, [attention]);
+  const troubled = new Set(perContext.keys());
+  const [kindFilter, setKindFilter] = useState<string | null>(null);
+  const kindCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const a of attention) m.set(a.issue.kind, (m.get(a.issue.kind) ?? 0) + 1);
+    return [...m].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  }, [attention]);
+  const shown = kindFilter && kindCounts.some(([k]) => k === kindFilter) ? attention.filter((a) => a.issue.kind === kindFilter) : attention;
+  const [showAll, setShowAll] = useState(false);
+  const listed = showAll ? shown : shown.slice(0, MAX_LISTED);
+
+  const connected = contexts.filter((c) => probes[c.name]?.state === "ok").map((c) => c.name);
+  const scanState = useMemo(() => {
+    const list = connected.map((c) => scans[c]).filter((x) => !!x);
+    const running = list.filter((x) => "running" in x).length;
+    const done = list.flatMap((x) => ("items" in x ? [x] : []));
+    const failed = list.filter((x) => "error" in x).length;
+    return {
+      running,
+      at: done.length ? Math.max(...done.map((x) => x.at)) : 0,
+      kinds: done.reduce((n, x) => n + x.kinds, 0),
+      skipped: done.flatMap((x) => x.skipped),
+      failed,
+    };
+  }, [scans, connected.join("|")]);
+
   const lastCheck = Math.max(0, ...Object.values(issues).map((i) => i.at));
 
   return (
@@ -119,20 +160,59 @@ export function Overview() {
           </div>
         )}
 
-        {attention.length > 0 && (
+        {connected.length > 0 && (
           <section className="attention">
-            <h2>Needs attention</h2>
+            <div className="attention-head">
+              <h2>Needs attention</h2>
+              <span className="attention-scan muted">
+                {scanState.running > 0
+                  ? `Scanning ${scanState.running === 1 ? "1 cluster" : `${scanState.running} clusters`}…`
+                  : scanState.at > 0 && (
+                      <span title={scanState.skipped.length ? `Couldn't read: ${scanState.skipped.join(", ")}` : undefined}>
+                        Full scan {age(new Date(scanState.at).toISOString(), now)} ago · {scanState.kinds} kinds
+                        {scanState.skipped.length > 0 && ` · ${scanState.skipped.length} unreadable`}
+                      </span>
+                    )}
+                {scanState.failed > 0 && scanState.running === 0 && <span className="error"> · {scanState.failed} failed</span>}
+              </span>
+              <button
+                className="btn"
+                disabled={scanState.running > 0}
+                onClick={() => scanClusters(connected)}
+                title="Check every resource kind, custom resources included, for a status that says something is wrong"
+              >
+                <ScanSearch size={13} /> {scanState.at > 0 ? "Scan again" : "Scan all resources"}
+              </button>
+            </div>
+            {kindCounts.length > 1 && (
+              <div className="attention-kinds" role="group" aria-label="Filter by kind">
+                <button className={`hchip ${!kindFilter ? "on" : ""}`} onClick={() => setKindFilter(null)}>
+                  All <span className="muted">{attention.length}</span>
+                </button>
+                {kindCounts.map(([k, n]) => (
+                  <button key={k} className={`hchip ${kindFilter === k ? "on" : ""}`} onClick={() => setKindFilter(kindFilter === k ? null : k)}>
+                    {k} <span className="muted">{n}</span>
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="attention-list">
-              {attention.slice(0, MAX_LISTED).map(({ context, issue }) => (
-                <div className="attention-row" key={`${context}|${issue.kind}|${issue.namespace}|${issue.name}`}>
+              {attention.length === 0 && (
+                <div className="attention-empty muted">
+                  Nothing needs attention{scanState.at > 0 ? "" : ". Scan all resources to check custom resources too"}.
+                </div>
+              )}
+              {listed.map(({ context, issue }) => (
+                <div className="attention-row" key={issueKey(context, issue)}>
                 <button className="attention-open" onClick={() => openIssue(context, issue)}>
-                  <span className={`hdot ${issue.kind === "Node" ? "warn" : "error"}`} />
+                  <span className={`hdot ${issue.severity}`} />
                   <span className="attention-what">
+                    <span className="attention-kind">{issue.kind}</span>
                     <b>{issue.name}</b> {issue.reason}
                   </span>
-                  <span className="muted">
+                  <span className="muted attention-where">
                     {shortContext(context)}
-                    {issue.namespace ? ` · ${issue.namespace}` : ` · ${issue.kind.toLowerCase()}`}
+                    {issue.namespace ? ` · ${issue.namespace}` : ""}
                   </span>
                   <span className="attention-when muted">{issue.since ? age(issue.since, now) : ""}</span>
                 </button>
@@ -148,7 +228,11 @@ export function Overview() {
                 )}
                 </div>
               ))}
-              {attention.length > MAX_LISTED && <div className="attention-more muted">and {attention.length - MAX_LISTED} more</div>}
+              {shown.length > MAX_LISTED && (
+                <button className="attention-more" onClick={() => setShowAll(!showAll)} aria-expanded={showAll}>
+                  {showAll ? "Show fewer" : `Show ${shown.length - MAX_LISTED} more`}
+                </button>
+              )}
             </div>
           </section>
         )}
@@ -157,7 +241,7 @@ export function Overview() {
           {contexts.map((c) => {
             const p = probes[c.name];
             const found = issues[c.name];
-            const count = found && "items" in found ? found.items.length : 0;
+            const count = perContext.get(c.name) ?? 0;
             const nodesDown = p?.state === "ok" ? p.data.nodes - p.data.nodesReady : 0;
             const warn = p?.state === "ok" && (count > 0 || nodesDown > 0);
             return (

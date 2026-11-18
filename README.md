@@ -50,7 +50,10 @@ in your terminal, even when the app is started from the Finder or the Start menu
 <img src="assets/screenshots/overview.jpg" alt="The overview: every cluster's health, and a list of what needs attention" width="720">
 
 - **Overview** of every cluster: health, version, nodes, pods, API latency, and a *Needs attention*
-  list of failing pods, NotReady nodes and failed jobs.
+  list: failing pods, NotReady nodes, failed jobs, workloads with no replica ready, ingresses whose
+  class or backend Service doesn't exist, Gateway API objects that weren't accepted, autoscalers that
+  can't scale, and recent Warning events about anything. *Scan all resources* checks every resource
+  kind, custom resources included, by their status conditions.
 - **Cross-cluster tables**: ⌘/Ctrl-click clusters in the sidebar to see the same resource of all of
   them in one live table.
 - **Environments**: production, staging, development and local clusters get a color and a tag,

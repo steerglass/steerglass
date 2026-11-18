@@ -5,6 +5,7 @@ mod commands;
 mod console;
 mod debug;
 mod error;
+mod health;
 mod kubeconfig;
 mod metrics;
 mod refs;
@@ -124,6 +125,7 @@ pub fn run() {
             commands::environment,
             commands::cluster_summary,
             commands::cluster_issues,
+            commands::cluster_scan,
             metrics::pod_usage,
             metrics::pod_history,
             metrics::node_usage,
