@@ -1,5 +1,16 @@
 [
   {
+    "version": "0.5.1",
+    "date": "2026-11-19",
+    "title": "Health checks closer to Argo CD's",
+    "items": [
+      "Needs attention lists CronJobs whose last run failed. While a new run is active it still notices runs that keep failing, from the failed Jobs created since the last success, which Argo CD reports as healthy.",
+      "Deployments whose rollout is stuck show up even while old replicas still serve traffic: pods that can't be created (quota exceeded, rejected by an admission webhook or pod security) and rollouts past their progress deadline.",
+      "Scan all resources reads each operator's own status phase or state: any that speaks of failure counts as an error, so Velero backups that PartiallyFailed or FailedValidation, Percona clusters in error and invalid ACME orders are listed. The Reconciled and ReconcileSuccess conditions are checked too.",
+      "CronJob tables mark the ones whose last run failed."
+    ]
+  },
+  {
     "version": "0.5.0",
     "date": "2026-11-18",
     "title": "Needs attention sees more, and a full health scan",
