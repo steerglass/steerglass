@@ -8,8 +8,11 @@ import { errText } from "../api";
 import { useStore } from "../store";
 import { SettingRow } from "./SettingRow";
 
-const FIRST_CHECK_MS = 10_000;
+/** Lets the first clusters load before the network request. */
+const FIRST_CHECK_MS = 2_000;
 const CHECK_EVERY_MS = 6 * 60 * 60 * 1000;
+/** Coming back to the window checks again if the last check is older than this. */
+const ON_FOCUS_AFTER_MS = 30 * 60 * 1000;
 
 type Phase = { state: "idle" } | { state: "available" } | { state: "downloading"; done: number; total?: number } | { state: "error"; message: string };
 
@@ -49,7 +52,8 @@ async function install() {
   }
 }
 
-/** Checks steerglass.com shortly after launch and then every few hours. */
+/** Checks steerglass.com right after launch, every few hours, and when the window comes back to
+ * the front after a while (the app often stays open for days). */
 export function useUpdateChecks() {
   const store = useStore((s) => s.appStore);
   useEffect(() => {
@@ -57,9 +61,15 @@ export function useUpdateChecks() {
     const quiet = () => checkNow().catch(() => {});
     const first = setTimeout(quiet, FIRST_CHECK_MS);
     const every = setInterval(quiet, CHECK_EVERY_MS);
+    const onFocus = () => {
+      const { checkedAt, update } = useUpdates.getState();
+      if (!update && (checkedAt === null || Date.now() - checkedAt > ON_FOCUS_AFTER_MS)) quiet();
+    };
+    window.addEventListener("focus", onFocus);
     return () => {
       clearTimeout(first);
       clearInterval(every);
+      window.removeEventListener("focus", onFocus);
     };
   }, [store]);
 }
@@ -127,7 +137,7 @@ export function UpdateSettings() {
   return (
     <SettingRow
       title={`Steerglass ${version}`}
-      desc={status ?? (update ? `Version ${update.version} is available.` : "Checks steerglass.com for new versions every few hours.")}
+      desc={status ?? (update ? `Version ${update.version} is available.` : "Checks steerglass.com for new versions at launch and every few hours.")}
     >
       {update ? (
         <button className="btn primary" onClick={install}>
