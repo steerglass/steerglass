@@ -1,7 +1,7 @@
 //! What needs attention in a cluster.
 //!
-//! [`quick`] runs every minute while the overview is open: failing pods, nodes, jobs and workloads,
-//! claims and load balancers stuck waiting, ingresses pointing at nothing, Gateway API objects
+//! [`quick`] runs every minute while the overview is open: failing pods, nodes, jobs and cron jobs,
+//! workloads with no replica ready or a stuck rollout, claims and load balancers stuck waiting, ingresses pointing at nothing, Gateway API objects
 //! that weren't accepted, autoscalers that can't scale, and recent Warning events about anything.
 //! [`scan`] runs on demand and adds every custom resource the cluster serves, judged by the common
 //! status conditions (see `rows::conditions_status`), plus a few built-in kinds.
@@ -18,7 +18,7 @@ use serde::Serialize;
 use serde_json::Value;
 
 use crate::error::{Error, Result};
-use crate::rows::{Health, Row, arr, get, s};
+use crate::rows::{Health, Row, arr, cronjob_problem, get, s, to_row};
 use crate::state::{AppState, KindRef};
 use crate::table::list_rows;
 
@@ -129,7 +129,8 @@ pub async fn quick(client: &Client) -> Result<Vec<Issue>> {
         list_rows(client, "/api/v1/pods", "", "Pod"),
         list_rows(client, "/api/v1/nodes", "", "Node"),
         list_rows(client, "/apis/batch/v1/jobs", "batch", "Job"),
-        list_rows(client, "/apis/apps/v1/deployments", "apps", "Deployment"),
+        // Full objects: the rollout conditions aren't in the server table.
+        list_json(client, "/apis/apps/v1/deployments", None, 5000),
         list_rows(client, "/apis/apps/v1/statefulsets", "apps", "StatefulSet"),
         list_rows(client, "/apis/apps/v1/daemonsets", "apps", "DaemonSet"),
         list_rows(client, "/api/v1/persistentvolumeclaims", "", "PersistentVolumeClaim"),
@@ -139,27 +140,34 @@ pub async fn quick(client: &Client) -> Result<Vec<Issue>> {
         return Err(Error::msg(e.clone()));
     }
     const GW: &str = "gateway.networking.k8s.io";
-    let (ingresses, classes, scalers, events, gateways, routes) = tokio::join!(
+    let (ingresses, classes, scalers, events, gateways, routes, cronjobs) = tokio::join!(
         list_json(client, "/apis/networking.k8s.io/v1/ingresses", None, 5000),
         list_json(client, "/apis/networking.k8s.io/v1/ingressclasses", None, 500),
         list_json(client, "/apis/autoscaling/v2/horizontalpodautoscalers", None, 5000),
         list_json(client, "/api/v1/events", Some("type=Warning"), 3000),
         list_rows(client, "/apis/gateway.networking.k8s.io/v1/gateways", GW, "Gateway"),
         list_rows(client, "/apis/gateway.networking.k8s.io/v1/httproutes", GW, "HTTPRoute"),
+        list_json(client, "/apis/batch/v1/cronjobs", None, 5000),
     );
+    let deploys = deploys.map(|items| items.iter().map(|o| (to_row("apps", "Deployment", o), o.clone())).collect::<Vec<_>>());
 
     // What exists, for the kinds listed here: Warning events about anything else of those kinds
     // are about deleted objects (a controller still retrying a cleanup), not current problems.
     let mut known = Known::default();
     for (group, kind, rows) in [
-        ("", "Pod", &pods), ("", "Node", &nodes), ("batch", "Job", &jobs), ("apps", "Deployment", &deploys),
+        ("", "Pod", &pods), ("", "Node", &nodes), ("batch", "Job", &jobs),
         ("apps", "StatefulSet", &sets), ("apps", "DaemonSet", &daemons), ("", "PersistentVolumeClaim", &claims), ("", "Service", &services),
     ] {
         if let Ok(rows) = rows {
             known.rows(group, kind, rows);
         }
     }
-    for (group, kind, items) in [("networking.k8s.io", "Ingress", &ingresses), ("autoscaling", "HorizontalPodAutoscaler", &scalers)] {
+    if let Ok(d) = &deploys {
+        known.rows("apps", "Deployment", &d.iter().map(|(r, _)| r.clone()).collect::<Vec<_>>());
+    }
+    for (group, kind, items) in [
+        ("networking.k8s.io", "Ingress", &ingresses), ("autoscaling", "HorizontalPodAutoscaler", &scalers), ("batch", "CronJob", &cronjobs),
+    ] {
         if let Ok(items) = items {
             known.objects(group, kind, items);
         }
@@ -174,11 +182,24 @@ pub async fn quick(client: &Client) -> Result<Vec<Issue>> {
         let since = r.last_restart.clone().or(r.created.clone());
         f.row("", "Pod", r.clone(), cell(&r, 1), Severity::Error, since);
     }
-    for r in failing(jobs) {
+    for r in failing(jobs.clone()) {
         f.row("batch", "Job", r.clone(), cell(&r, 1), Severity::Error, r.created.clone());
     }
+    let failed_jobs: Vec<Row> = jobs.as_ref().map(|j| j.iter().filter(|r| r.health == Health::Error).cloned().collect()).unwrap_or_default();
+    for i in cronjob_issues(cronjobs.as_deref().unwrap_or_default(), &failed_jobs) {
+        f.push(i);
+    }
+    // A rollout that can't proceed (quota, admission, deadline), even while old replicas serve.
+    for (r, o) in deploys.unwrap_or_default() {
+        if let Some((reason, since)) = rollout_problem(&o) {
+            f.row("apps", "Deployment", r, reason, Severity::Error, since);
+        } else if r.health == Health::Error {
+            let reason = workload_reason("Deployment", &r);
+            f.row("apps", "Deployment", r, reason, Severity::Error, None);
+        }
+    }
     // No replica ready at all (partial ones show up through their failing pods).
-    for (kind, rows) in [("Deployment", deploys), ("StatefulSet", sets), ("DaemonSet", daemons)] {
+    for (kind, rows) in [("StatefulSet", sets), ("DaemonSet", daemons)] {
         for r in failing(rows) {
             let reason = workload_reason(kind, &r);
             f.row("apps", kind, r, reason, Severity::Error, None);
@@ -299,6 +320,61 @@ fn ingress_issues(items: &[Value], classes: Option<&HashSet<String>>, services: 
         }
     }
     out
+}
+
+/// Cron jobs whose last run failed, or that never succeeded (see `rows::cronjob_problem`). Also
+/// while a run is active, which Argo CD can't judge: failed Jobs it created since its last success
+/// (named `<cronjob>-<schedule>`) show runs keep failing.
+fn cronjob_issues(items: &[Value], failed_jobs: &[Row]) -> Vec<Issue> {
+    items
+        .iter()
+        .filter_map(|o| {
+            let ns = get(o, &["metadata", "namespace"]).and_then(|v| v.as_str());
+            let name = s(o, &["metadata", "name"]);
+            let suspended = get(o, &["spec", "suspend"]).and_then(|v| v.as_bool()) == Some(true);
+            let last_ok = get(o, &["status", "lastSuccessfulTime"]).and_then(|v| v.as_str());
+            let failed_since = failed_jobs
+                .iter()
+                .filter(|j| {
+                    j.namespace.as_deref() == ns
+                        && j.name.strip_prefix(&name).and_then(|x| x.strip_prefix('-')).is_some_and(|x| !x.is_empty() && x.bytes().all(|b| b.is_ascii_digit()))
+                        && last_ok.is_none_or(|ok| j.created.as_deref().is_some_and(|c| c > ok))
+                })
+                .count();
+            let scheduled = get(o, &["status", "lastScheduleTime"]).and_then(|v| v.as_str()).map(String::from);
+            // The failed Jobs kept are capped by failedJobsHistoryLimit, so no count: since when.
+            let (reason, h, since) = match cronjob_problem(o) {
+                Some((r, h)) => (r.to_string(), h, scheduled),
+                None if !suspended && failed_since > 0 => ("Runs failing since the last success".into(), Health::Error, last_ok.map(String::from).or(scheduled)),
+                None => return None,
+            };
+            Some(Issue {
+                group: "batch".into(),
+                kind: "CronJob".into(),
+                namespace: ns.map(String::from),
+                name,
+                reason,
+                since,
+                severity: if h == Health::Error { Severity::Error } else { Severity::Warn },
+            })
+        })
+        .collect()
+}
+
+/// A Deployment whose controller can't create pods (`ReplicaFailure`: quota, admission webhooks,
+/// pod security) or whose rollout ran past its deadline, like Argo CD's "Degraded".
+fn rollout_problem(o: &Value) -> Option<(String, Option<String>)> {
+    let paused = get(o, &["spec", "paused"]).and_then(|v| v.as_bool()) == Some(true);
+    let conds = arr(o, &["status", "conditions"]);
+    let since = |c: &Value| get(c, &["lastTransitionTime"]).and_then(|v| v.as_str()).map(String::from);
+    if let Some(c) = conds.iter().find(|c| s(c, &["type"]) == "ReplicaFailure" && s(c, &["status"]) == "True") {
+        let msg = s(c, &["message"]);
+        let reason = s(c, &["reason"]);
+        let text = if msg.is_empty() { reason } else { format!("{reason}: {msg}") };
+        return Some((text.chars().take(200).collect(), since(c)));
+    }
+    let c = conds.iter().find(|c| s(c, &["type"]) == "Progressing" && s(c, &["reason"]) == "ProgressDeadlineExceeded")?;
+    (!paused).then(|| ("Rollout stuck: progress deadline exceeded".into(), since(c)))
 }
 
 /// Autoscalers that can't read their metrics or reach their target.
@@ -518,6 +594,47 @@ mod tests {
         let found = scaler_issues(&[h, off]);
         assert_eq!(found.len(), 1);
         assert_eq!(found[0].reason, "FailedGetResourceMetric");
+    }
+
+    #[test]
+    fn cronjob_problems() {
+        let cj = |status: Value| json!({"metadata": {"name": "backup", "namespace": "ops"}, "spec": {}, "status": status});
+        let failed = cj(json!({"lastScheduleTime": "2026-11-19T10:00:00Z", "lastSuccessfulTime": "2026-11-19T09:00:30Z"}));
+        let ok = cj(json!({"lastScheduleTime": "2026-11-19T10:00:00Z", "lastSuccessfulTime": "2026-11-19T10:00:40Z"}));
+        let running = cj(json!({"lastScheduleTime": "2026-11-19T10:00:00Z", "lastSuccessfulTime": "2026-11-19T09:00:30Z", "active": [{"name": "backup-1"}]}));
+        let never = cj(json!({"lastScheduleTime": "2026-11-19T10:00:00Z"}));
+        let fresh = cj(json!({}));
+        let found = cronjob_issues(&[failed, ok, running.clone(), never, fresh], &[]);
+        assert_eq!(found.len(), 2);
+        assert_eq!((found[0].reason.as_str(), found[0].severity), ("Last run failed", Severity::Error));
+        assert_eq!((found[1].reason.as_str(), found[1].severity), ("No successful run yet", Severity::Warn));
+
+        // Running again, but the runs since the last success failed.
+        let job = |name: &str, created: &str| Row {
+            uid: String::new(), name: name.into(), namespace: Some("ops".into()), created: Some(created.into()),
+            cells: vec![], health: Health::Error, last_restart: None,
+        };
+        let failed_jobs = [job("backup-29918100", "2026-11-19T09:30:00Z"), job("backup-29918160", "2026-11-19T09:45:00Z"), job("backup-29917000", "2026-11-18T08:00:00Z"), job("backup-db-29918100", "2026-11-19T09:30:00Z")];
+        let found = cronjob_issues(&[running], &failed_jobs);
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].reason, "Runs failing since the last success");
+        assert_eq!(found[0].since.as_deref(), Some("2026-11-19T09:00:30Z"));
+    }
+
+    #[test]
+    fn rollout_problems() {
+        let quota = json!({"spec": {}, "status": {"conditions": [
+            {"type": "ReplicaFailure", "status": "True", "reason": "FailedCreate", "message": "pods \"web-1\" is forbidden: exceeded quota", "lastTransitionTime": "2026-11-19T10:00:00Z"}
+        ]}});
+        let (reason, since) = rollout_problem(&quota).unwrap();
+        assert!(reason.starts_with("FailedCreate: pods"), "{reason}");
+        assert_eq!(since.as_deref(), Some("2026-11-19T10:00:00Z"));
+        let stuck = json!({"spec": {}, "status": {"conditions": [{"type": "Progressing", "status": "False", "reason": "ProgressDeadlineExceeded"}]}});
+        assert!(rollout_problem(&stuck).unwrap().0.contains("deadline"));
+        let paused = json!({"spec": {"paused": true}, "status": {"conditions": [{"type": "Progressing", "status": "False", "reason": "ProgressDeadlineExceeded"}]}});
+        assert!(rollout_problem(&paused).is_none());
+        let fine = json!({"spec": {}, "status": {"conditions": [{"type": "Progressing", "status": "True", "reason": "NewReplicaSetAvailable"}]}});
+        assert!(rollout_problem(&fine).is_none());
     }
 
     #[test]

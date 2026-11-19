@@ -423,7 +423,7 @@ fn cells_for(group: &str, kind: &str, o: &Value) -> (Vec<String>, Health) {
                 arr(o, &["status", "active"]).len().to_string(),
                 s(o, &["status", "lastScheduleTime"]),
             ],
-            Health::Neutral,
+            cronjob_problem(o).map(|(_, h)| h).unwrap_or(Health::Neutral),
         ),
         ("", "Service") => {
             let ext: Vec<String> = arr(o, &["status", "loadBalancer", "ingress"])
@@ -661,7 +661,8 @@ fn access_modes(modes: &[Value]) -> String {
 }
 
 /// Conditions that mean "working" when True, in the order their name is shown.
-const GOOD_CONDITIONS: [&str; 7] = ["Ready", "Available", "Accepted", "Programmed", "ResolvedRefs", "Synced", "Healthy"];
+/// `Reconciled` (Prometheus operator) and `ReconcileSuccess` (RabbitMQ) say the operator could apply the spec.
+const GOOD_CONDITIONS: [&str; 9] = ["Ready", "Available", "Accepted", "Programmed", "ResolvedRefs", "Synced", "Healthy", "Reconciled", "ReconcileSuccess"];
 /// Conditions that mean "broken" when True (`Stalled` is the kstatus convention, used by Flux and kpt).
 const BAD_CONDITIONS: [&str; 3] = ["Stalled", "Degraded", "Failed"];
 
@@ -691,6 +692,21 @@ fn conditions_status(conds: &[Value]) -> Option<(String, Health)> {
     unknown.or(first_ok.map(|ty| (ty.to_string(), Health::Ok)))
 }
 
+/// A CronJob whose last run failed (Error), or that ran and never succeeded (Warn), as Argo CD
+/// judges it: only once no run is active, since a running one hasn't reported yet.
+pub(crate) fn cronjob_problem(o: &Value) -> Option<(&'static str, Health)> {
+    if get(o, &["spec", "suspend"]).and_then(|v| v.as_bool()) == Some(true) || !arr(o, &["status", "active"]).is_empty() {
+        return None;
+    }
+    let scheduled = get(o, &["status", "lastScheduleTime"]).and_then(|v| v.as_str())?;
+    match get(o, &["status", "lastSuccessfulTime"]).and_then(|v| v.as_str()) {
+        None => Some(("No successful run yet", Health::Warn)),
+        // RFC 3339 UTC timestamps compare as strings.
+        Some(ok) if ok < scheduled => Some(("Last run failed", Health::Error)),
+        Some(_) => None,
+    }
+}
+
 /// For CRDs and other kinds: derive a status from the common conditions or `status.phase`.
 fn generic_status(o: &Value) -> (Vec<String>, Health) {
     if let Some((label, h)) = conditions_status(arr(o, &["status", "conditions"])) {
@@ -712,13 +728,9 @@ fn generic_status(o: &Value) -> (Vec<String>, Health) {
             return (vec![label], h);
         }
     }
-    if let Some(phase) = get(o, &["status", "phase"]).and_then(|p| p.as_str()) {
-        let h = match phase {
-            "Running" | "Active" | "Bound" | "Succeeded" | "Ready" | "Healthy" => Health::Ok,
-            "Failed" | "Error" => Health::Error,
-            _ => Health::Neutral,
-        };
-        return (vec![phase.to_string()], h);
+    // `state` is the same idea in other operators (Percona, cert-manager ACME, Ceph).
+    if let Some(phase) = ["phase", "state"].iter().find_map(|f| get(o, &["status", f]).and_then(|p| p.as_str())) {
+        return (vec![phase.to_string()], phase_health(phase));
     }
     if let Some(health) = get(o, &["status", "health", "status"]).and_then(|p| p.as_str()) {
         // Argo CD Applications.
@@ -732,6 +744,19 @@ fn generic_status(o: &Value) -> (Vec<String>, Health) {
         return (vec![if sync.is_empty() { health.into() } else { format!("{health} · {sync}") }], h);
     }
     (vec![String::new()], Health::Neutral)
+}
+
+/// Phase names are each operator's own, so beyond the common ones, any that speaks of failure
+/// counts as an error: Velero's `PartiallyFailed` and `FailedValidation`, Percona's `error`,
+/// cert-manager's `invalid`, CloudNativePG's "Failure…".
+fn phase_health(phase: &str) -> Health {
+    let p = phase.to_ascii_lowercase();
+    match p.as_str() {
+        "running" | "active" | "bound" | "succeeded" | "ready" | "healthy" | "completed" | "valid" | "enabled" | "available" => Health::Ok,
+        "lost" => Health::Error,
+        _ if ["fail", "error", "invalid", "degraded", "unhealthy", "crash"].iter().any(|w| p.contains(w)) => Health::Error,
+        _ => Health::Neutral,
+    }
 }
 
 /// Mirrors the status column logic of `kubectl get pods`.
@@ -856,6 +881,22 @@ mod tests {
             {"conditions": [{"type": "Accepted", "status": "True"}, {"type": "ResolvedRefs", "status": "False", "reason": "BackendNotFound"}]}
         ]}});
         assert_eq!(generic_status(&route), (vec!["BackendNotFound".to_string()], Health::Error));
+        let rabbit = json!({"status": {"conditions": [
+            {"type": "ClusterAvailable", "status": "True"}, {"type": "ReconcileSuccess", "status": "False", "reason": "Error"}
+        ]}});
+        assert_eq!(generic_status(&rabbit).1, Health::Error);
+    }
+
+    #[test]
+    fn generic_phases() {
+        let phase = |p: &str| generic_status(&json!({"status": {"phase": p}})).1;
+        assert_eq!(phase("PartiallyFailed"), Health::Error);
+        assert_eq!(phase("FailedValidation"), Health::Error);
+        assert_eq!(phase("Completed"), Health::Ok);
+        assert_eq!(phase("InProgress"), Health::Neutral);
+        assert_eq!(phase("Failing over"), Health::Error);
+        let state = generic_status(&json!({"status": {"state": "error"}}));
+        assert_eq!(state, (vec!["error".to_string()], Health::Error));
     }
 
     #[test]
