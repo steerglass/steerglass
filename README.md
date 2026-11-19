@@ -32,7 +32,7 @@ everything in your clusters stay on your machine.
 
 | System | How |
 | --- | --- |
-| **macOS** 11+ | `brew install --cask davidebettio/tap/steerglass`, or the signed and notarized [`.dmg`](https://steerglass.com/install/#macos) (Apple Silicon and Intel) |
+| **macOS** 11+ | `brew install --cask steerglass/tap/steerglass`, or the signed and notarized [`.dmg`](https://steerglass.com/install/#macos) (Apple Silicon and Intel) |
 | **Windows** 10+ | [installer](https://steerglass.com/install/#windows) (`.exe` or `.msi`) |
 | **Linux** | [apt and dnf repositories](https://steerglass.com/install/#linux), `.deb`, `.rpm` or AppImage, x86_64 and arm64 |
 

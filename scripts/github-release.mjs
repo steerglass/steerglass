@@ -32,7 +32,7 @@ export function releaseNotes(version) {
 
 ## Install
 
-- **macOS** 11+: \`brew install --cask davidebettio/tap/steerglass\`, or the \`.dmg\` below (Apple Silicon and Intel, signed and notarized).
+- **macOS** 11+: \`brew install --cask steerglass/tap/steerglass\`, or the \`.dmg\` below (Apple Silicon and Intel, signed and notarized).
 - **Windows** 10+: the \`-setup.exe\` or the \`.msi\` below.
 - **Linux**: the [apt and dnf repositories](${SITE}/install/#linux), or the \`.deb\`, \`.rpm\` or AppImage below (x86_64 and arm64).
 

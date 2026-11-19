@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Updates the Homebrew cask in github.com/davidebettio/homebrew-tap (Casks/steerglass.rb), so that
-// `brew install --cask davidebettio/tap/steerglass` installs the given version. publish-release.mjs
+// Updates the Homebrew cask in github.com/steerglass/homebrew-tap (Casks/steerglass.rb), so that
+// `brew install --cask steerglass/tap/steerglass` installs the given version. publish-release.mjs
 // calls it after a release with a macOS build; on its own it fetches the published .dmg to hash it:
 //
 //   node scripts/homebrew-cask.mjs <version>
@@ -10,7 +10,7 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 
-const TAP = "davidebettio/homebrew-tap";
+const TAP = "steerglass/homebrew-tap";
 const PATH = "Casks/steerglass.rb";
 const SITE = "https://steerglass.com";
 

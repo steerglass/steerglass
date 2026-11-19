@@ -240,7 +240,7 @@ rsync(`${stage}/updates/${manifestName}`, `${REMOTE}/updates/${manifestName}`);
 if (complete) console.log(`Published: ${SITE}/updates/latest.json`);
 else console.log(`latest.json unchanged (still ${live?.version ?? "none"}): it moves to ${version} when ${missing.join(", ")} are published`);
 
-// Homebrew: `brew install --cask davidebettio/tap/steerglass`. The cask points at the immutable release
+// Homebrew: `brew install --cask steerglass/tap/steerglass`. The cask points at the immutable release
 // file, so it can only be updated once that is online. A failure here doesn't undo the release.
 const dmg = readdirSync(releaseDir).find((f) => f.endsWith("_universal.dmg"));
 if (dmg) {
