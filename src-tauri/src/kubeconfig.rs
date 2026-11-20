@@ -143,6 +143,21 @@ fn looks_like_kubeconfig(p: &Path) -> bool {
         .unwrap_or(false)
 }
 
+/// What the kubeconfig files looked like when read: each candidate file's modification time and
+/// size. Tools like minikube and kind rewrite the file (new port, new certificates) when a cluster
+/// is recreated; a different stamp means the loaded copy is stale.
+pub type Stamp = Vec<(PathBuf, Option<(std::time::SystemTime, u64)>)>;
+
+pub fn stamp(settings: &Settings) -> Stamp {
+    candidate_files(settings)
+        .into_iter()
+        .map(|p| {
+            let meta = std::fs::metadata(&p).ok().and_then(|m| Some((m.modified().ok()?, m.len())));
+            (p, meta)
+        })
+        .collect()
+}
+
 pub fn load(settings: &Settings) -> Loaded {
     let mut merged: Option<Kubeconfig> = None;
     let mut contexts = Vec::new();

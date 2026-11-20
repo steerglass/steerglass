@@ -90,6 +90,8 @@ interface State extends Persisted {
   marked: Map<string, ObjRef>;
   detail: Detail | null;
   probes: Record<string, Probe>;
+  /** Bumped when the kubeconfig is read again: open watches restart with the new clients. */
+  epoch: number;
   issues: Record<string, Issues>;
   scans: Record<string, Scans>;
   usage: Record<string, Usage>;
@@ -111,7 +113,10 @@ interface State extends Persisted {
   applyDraft: { yaml: string; context: string } | null;
   confirm: Confirm | null;
 
-  loadContexts: (reload?: boolean) => Promise<void>;
+  /** False if the kubeconfig couldn't be read (the error is shown as a toast). */
+  loadContexts: (reload?: boolean) => Promise<boolean>;
+  /** Reconnects if the kubeconfig files changed since they were read (at most every few seconds). */
+  syncKubeconfig: () => Promise<void>;
   /** Hides a cluster from the sidebar and the overview, or shows it again. */
   setHidden: (ctx: string, hidden: boolean) => Promise<void>;
   probe: (ctx: string) => Promise<void>;
@@ -150,6 +155,8 @@ interface State extends Persisted {
 const persisted = loadPersisted();
 let toastId = 0;
 
+let lastSync = 0;
+
 export const useStore = create<State>((set, get) => ({
   contexts: persisted.contexts ?? [],
   kind: persisted.kind ?? PODS,
@@ -170,6 +177,7 @@ export const useStore = create<State>((set, get) => ({
   marked: new Map(),
   detail: null,
   probes: {},
+  epoch: 0,
   issues: {},
   scans: {},
   usage: {},
@@ -193,9 +201,30 @@ export const useStore = create<State>((set, get) => ({
       const names = new Set(report.contexts.map((c) => c.name));
       const contexts = get().contexts.filter((c) => names.has(c));
       set({ report, contexts, view: contexts.length ? get().view : "overview" });
-      if (reload) set({ probes: {}, discovered: {}, namespaces: {} });
+      if (reload) {
+        set((s) => ({ probes: {}, discovered: {}, namespaces: {}, epoch: s.epoch + 1 }));
+        // The open clusters reconnect right away (the overview probes the rest).
+        contexts.forEach((c) => {
+          get().probe(c);
+          get().ensureDiscovery(c);
+          get().ensureNamespaces(c);
+        });
+      }
+      return true;
     } catch (e) {
       get().toast(errText(e), "error");
+      return false;
+    }
+  },
+
+  async syncKubeconfig() {
+    const now = Date.now();
+    if (now - lastSync < 3000) return;
+    lastSync = now;
+    try {
+      if (await api.reloadIfChanged()) await get().loadContexts(true);
+    } catch {
+      // Not worth a toast: F5 reports errors.
     }
   },
 
@@ -223,6 +252,7 @@ export const useStore = create<State>((set, get) => ({
       get().loadIssues(ctx);
     } catch (e) {
       set((s) => ({ probes: { ...s.probes, [ctx]: { state: "error", error: errText(e) } } }));
+      get().syncKubeconfig();
     }
   },
 

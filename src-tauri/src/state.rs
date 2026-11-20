@@ -58,6 +58,8 @@ pub struct AppState {
     pub settings: RwLock<Settings>,
     pub(crate) kubeconfig: RwLock<Kubeconfig>,
     pub report: RwLock<LoadReport>,
+    /// The kubeconfig files as they were when last read (see [`kubeconfig::stamp`]).
+    stamp: Mutex<kubeconfig::Stamp>,
     /// One client per context. The cell makes concurrent first uses (overview probe, namespaces,
     /// discovery, watches) share a single client, so exec auth plugins run once instead of N times.
     clients: Mutex<HashMap<String, Arc<OnceCell<Client>>>>,
@@ -71,8 +73,10 @@ impl AppState {
     pub fn new(settings_path: PathBuf) -> Self {
         let settings = Settings::load(&settings_path);
         kubeconfig::activate_bookmarks(&settings);
+        let stamp = kubeconfig::stamp(&settings);
         let loaded = kubeconfig::load(&settings);
         Self {
+            stamp: Mutex::new(stamp),
             settings_path,
             settings: RwLock::new(settings),
             kubeconfig: RwLock::new(loaded.config),
@@ -86,6 +90,7 @@ impl AppState {
     }
 
     pub fn reload(&self) -> LoadReport {
+        *self.stamp.lock() = kubeconfig::stamp(&self.settings.read());
         let loaded = kubeconfig::load(&self.settings.read());
         *self.kubeconfig.write() = loaded.config;
         *self.report.write() = loaded.report.clone();
@@ -112,8 +117,25 @@ impl AppState {
             .and_then(|c| c.namespace.clone())
     }
 
-    /// Returns a cached client for the context, creating it on first use.
+    /// Reads the kubeconfig files again if they changed since they were loaded. True if it did.
+    pub fn reload_if_changed(&self) -> bool {
+        let now = kubeconfig::stamp(&self.settings.read());
+        if *self.stamp.lock() == now {
+            return false;
+        }
+        self.reload();
+        true
+    }
+
+    /// Returns a cached client for the context, creating it on first use. A new client starts from
+    /// the kubeconfig as it is now: a cluster recreated by minikube or kind gets its new address
+    /// and certificates without restarting the app.
     pub async fn client(&self, context: &str) -> Result<Client> {
+        let cached = self.clients.lock().get(context).and_then(|c| c.get().cloned());
+        if let Some(c) = cached {
+            return Ok(c);
+        }
+        self.reload_if_changed();
         let cell = self.clients.lock().entry(context.to_string()).or_default().clone();
         let client = cell
             .get_or_try_init(|| async {

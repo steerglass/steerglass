@@ -35,6 +35,13 @@ pub fn reload_contexts(state: State<'_, AppState>) -> LoadReport {
     state.reload()
 }
 
+/// Reads the kubeconfig again if its files changed (a recreated minikube or kind cluster). True if
+/// it did: the UI then reloads the contexts and reconnects.
+#[tauri::command]
+pub fn reload_if_changed(state: State<'_, AppState>) -> bool {
+    state.reload_if_changed()
+}
+
 #[tauri::command]
 pub fn get_settings(state: State<'_, AppState>) -> Settings {
     state.settings.read().clone()

@@ -119,6 +119,7 @@ pub fn run() {
             commands::list_contexts,
             commands::app_store_build,
             commands::reload_contexts,
+            commands::reload_if_changed,
             commands::get_settings,
             commands::update_settings,
             commands::grant_access,

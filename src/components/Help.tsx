@@ -12,6 +12,7 @@ const SECTIONS: { title: string; rows: Row[] }[] = [
       [[`${modKey}K`, ":"], "Command palette: jump to any resource, cluster, namespace or action"],
       [["?", "F1"], "Show this help"],
       [[`${modKey}0`], "Clusters overview"],
+      [["F5", `${modKey}R`], "Read the kubeconfig again and reconnect (after recreating a minikube or kind cluster)"],
       [[`${modKey}J`], "Ask AI about your clusters (when turned on in Settings → AI)"],
       [["⇧↵"], "In the command palette: ask in plain words (\"failing pods in staging\"), with AI"],
       [[`${modKey}1…9`], "Open the cluster with that number badge: starred clusters in sidebar order (or the first nine if none is starred)"],

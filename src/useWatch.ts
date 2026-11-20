@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, errText, type KindRef, type Row } from "./api";
+import { useStore } from "./store";
 
 export interface CtxRow extends Row {
   key: string;
@@ -29,6 +30,7 @@ export function useWatch(
   const [state, setState] = useState<WatchState>(EMPTY);
   const ctxKey = contexts.join("\u0000");
   const kindKey = kind ? `${kind.group}/${kind.version}/${kind.plural}` : "";
+  const epoch = useStore((s) => s.epoch);
 
   useEffect(() => {
     if (!kind || contexts.length === 0) {
@@ -80,6 +82,8 @@ export function useWatch(
               }
               case "error":
                 errors[ctx] = m.message;
+                // A recreated local cluster (new port, new certificates) shows up as errors here.
+                useStore.getState().syncKubeconfig();
                 break;
             }
             schedule();
@@ -109,7 +113,7 @@ export function useWatch(
       ids.forEach((id) => api.stopStream(id));
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ctxKey, kindKey, namespace, opts.fieldSelector, opts.labelSelector]);
+  }, [ctxKey, kindKey, namespace, opts.fieldSelector, opts.labelSelector, epoch]);
 
   return state;
 }

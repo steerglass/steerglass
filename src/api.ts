@@ -232,6 +232,7 @@ export const errText = (e: unknown) => {
 export const api = {
   listContexts: () => invoke<LoadReport>("list_contexts"),
   reloadContexts: () => invoke<LoadReport>("reload_contexts"),
+  reloadIfChanged: () => invoke<boolean>("reload_if_changed"),
   getSettings: () => invoke<Settings>("get_settings"),
   updateSettings: (settings: Settings) => invoke<LoadReport>("update_settings", { settings }),
   grantAccess: (path: string) => invoke<LoadReport>("grant_access", { path }),

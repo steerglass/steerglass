@@ -84,6 +84,13 @@ export default function App() {
         s.set({ paletteOpen: !s.paletteOpen });
         return;
       }
+      // F5 or Cmd/Ctrl+R: read the kubeconfig again and reconnect (a recreated minikube or kind
+      // cluster has a new port and certificates). Never reloads the page.
+      if (e.key === "F5" || (mod && !e.shiftKey && e.key.toLowerCase() === "r")) {
+        e.preventDefault();
+        s.loadContexts(true).then((ok) => ok && s.toast("Kubeconfig read again, clusters reconnected", "info"));
+        return;
+      }
       if (mod && e.key === ",") {
         e.preventDefault();
         s.set({ settingsOpen: true });
@@ -119,8 +126,15 @@ export default function App() {
         s.set({ paletteOpen: true });
       }
     };
+    // Back from a terminal where a minikube or kind cluster was recreated: reconnect if the
+    // kubeconfig changed.
+    const onFocus = () => useStore.getState().syncKubeconfig();
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("focus", onFocus);
+    };
   }, []);
 
   // Close the detail panel when the context set or kind changes underneath it.
