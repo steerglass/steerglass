@@ -1,5 +1,15 @@
 [
   {
+    "version": "0.5.2",
+    "date": "2026-11-20",
+    "title": "Reconnects after a cluster is recreated",
+    "items": [
+      "F5 and ⌘R (Ctrl+R) read the kubeconfig again and reconnect every open cluster, so a minikube or kind cluster that was deleted and created again works without restarting the app.",
+      "When the kubeconfig changes on disk, Steerglass notices on its own: open tables reconnect after a connection error or when you come back to the window.",
+      "The update check runs a couple of seconds after launch, and again when you come back to the window if the last check is more than 30 minutes old."
+    ]
+  },
+  {
     "version": "0.5.1",
     "date": "2026-11-19",
     "title": "Health checks closer to Argo CD's",

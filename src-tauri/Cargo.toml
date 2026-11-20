@@ -1,6 +1,6 @@
 [package]
 name = "steerglass"
-version = "0.5.1"
+version = "0.5.2"
 description = "Steerglass - fast multi-cluster Kubernetes desktop client"
 authors = ["Davide Bettio"]
 license = "Apache-2.0"
